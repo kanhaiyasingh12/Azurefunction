@@ -1,6 +1,6 @@
 # Azure Functions -- SRE Discovery Report (DEV Environment)
 
-**Project:** SRE-Project  
+**Project:** Azure Functions (87 across 3 envs) 
 **Environment:** DEV  
 **Scope:** Azure Functions (~87 across 3 environments; 10 Function Apps / 30 Functions in DEV)  
 **Status:** Discovery complete -- no remediation or implementation changes have been performed  
@@ -123,17 +123,17 @@ System was mapped in 19 layers. Each layer answers: **What exists? How did we ve
 | 6 | Event / data dependencies | Completed |
 | 7 | Platform / SCM configuration | Completed |
 | 8 | Deployment history | Completed |
-| 9 | CI/CD / release orchestration | Completed (for examined repo) |
+| 9 | CI/CD / release orchestration | Completed  |
 | 10 | Application Insights configuration | Completed |
 | 11 | Azure Monitor diagnostic settings | Completed |
-| 12 | Managed identity | Not yet started |
-| 13 | RBAC | Not yet started |
-| 14 | Key Vault / access relationships | Not yet started |
-| 15 | Networking | Not yet started |
-| 16 | Alerts and Action Groups | Not yet started |
-| 17 | Runtime health / metrics | Not yet started |
-| 18 | Ownership / SLO / incident path | Not yet started |
-| 19 | Final end-to-end architecture | Not yet started |
+| 12 | Managed identity | In Progress |
+| 13 | RBAC | In Progress |
+| 14 | Key Vault / access relationships | In Progress |
+| 15 | Networking | In Progress |
+| 16 | Alerts and Action Groups | In Progress |
+| 17 | Runtime health / metrics | In Progress |
+| 18 | Ownership / SLO / incident path | In Progress |
+| 19 | Final end-to-end architecture | In Progress |
 
 ---
 
