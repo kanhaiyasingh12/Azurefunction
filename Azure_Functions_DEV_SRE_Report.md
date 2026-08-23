@@ -27,116 +27,22 @@ The SRE team maintains a **Release Orchestration Capability Matrix** that tracks
 | Observability + cost | Is telemetry flowing and are costs tracked? |
 | Reporting / audit | Are deployments and changes auditable? |
 
-The matrix covers:
+The matrix covers: k8s + ArgoCD apps (incl. Temporal), Frontend (React, IBM components), Foundry models, **Azure Functions (~87 across 3 envs)**, Flyway DB migrations, Non-AKS Azure estate (86 resources), and Fabric / Knowledge Graphs.
 
-- k8s + ArgoCD apps (incl. Temporal)
-- Frontend (React, IBM components)
-- Foundry models
-- **Azure Functions (~87 across 3 envs)** &larr; this ticket
-- Flyway DB migrations (5 DBs per env?)
-- Non-AKS Azure estate (86 resources)
-- Fabric / Knowledge Graphs
-
-When SRE reviewed the matrix, **Azure Functions was marked `unknown` in every column**. No one on the team could explain what the Functions did, how they were triggered, what they depended on, or how they were deployed.
-
-We selected Azure Functions as our first ticket and chose **DEV** as the initial deep-dive environment.
+When SRE reviewed the matrix, **Azure Functions was marked `unknown` in every column**. We selected it as our first ticket and chose **DEV** as the initial deep-dive environment.
 
 ### 1.2 Investigation Principle
 
-The project follows a strict evidence-first methodology:
-
 ```
-DISCOVER
-   |
-   v
-VERIFY
-   |
-   v
-SAVE EVIDENCE
-   |
-   v
-MAP ARCHITECTURE
-   |
-   v
-EXPLAIN CURRENT STATE
-   |
-   v
-IDENTIFY OPERATIONAL GAPS
-   |
-   v
-GET ENGINEERING DECISION
-   |
-   v
-IMPLEMENT LATER
+DISCOVER --> VERIFY --> SAVE EVIDENCE --> MAP ARCHITECTURE --> EXPLAIN CURRENT STATE --> IDENTIFY OPERATIONAL GAPS --> GET ENGINEERING DECISION --> IMPLEMENT LATER
 ```
 
-**Rule:** Do not conclude from a single API call. Cross-check related configuration and preserve the evidence.
-
-**Rule:** No remediation is performed simply because a gap is discovered. The current phase is to establish a defensible current-state SRE baseline.
-
-### 1.3 How to Read This Document
-
-This document is intended for anyone -- including engineers who have never worked with Azure Functions in this project. It is structured in layers, from the broadest view down to the most granular detail:
-
-1. First we explain **what Azure Function Apps and Functions are** in our context.
-2. Then we list **exactly what exists** in DEV.
-3. Then we explain **how each Function is invoked** (triggers and bindings).
-4. Then we show **what external systems each Function depends on** (Event Hubs, Service Bus, Blob Storage, Timers).
-5. Then we map **how they relate to each other** (especially the Durable Functions orchestration).
-6. Then we show **how code gets deployed** (CI/CD).
-7. Then we assess **what observability exists** (Application Insights, diagnostic settings).
-8. Finally we identify **what is still unknown** and what the next investigation phase will cover.
+**Rule:** Do not conclude from a single API call. Cross-check related configuration and preserve the evidence.  
+**Rule:** No remediation is performed during discovery.
 
 ---
 
-## 2. Key Concepts for Non-Azure-Functions Engineers
-
-If you already understand Azure Functions, skip to [Section 3](#3-dev-environment-scope).
-
-### 2.1 What is an Azure Function App?
-
-An **Azure Function App** is a hosting container in Azure that runs one or more individual **Functions**. Think of it like a microservice deployment unit -- it has its own runtime, configuration, scaling rules, and deployment lifecycle. In our DEV environment, we have **10 Function Apps**.
-
-### 2.2 What is a Function?
-
-A **Function** is a single unit of code inside a Function App. Each Function is invoked by a **trigger** and may have additional **bindings** that connect it to external services. In our DEV environment, we have **30 Functions** distributed across the 10 Function Apps.
-
-### 2.3 What is a Trigger?
-
-A **trigger** is the event that causes a Function to execute. A Function has exactly one trigger. Common trigger types in our estate:
-
-| Trigger Type | What It Means |
-|---|---|
-| `httpTrigger` | The function runs when an HTTP request hits its URL endpoint. |
-| `eventHubTrigger` | The function runs when a message arrives in an Azure Event Hub. |
-| `blobTrigger` | The function runs when a file (blob) is created or updated in Azure Storage. |
-| `serviceBusTrigger` | The function runs when a message arrives on a Service Bus topic/subscription. |
-| `timerTrigger` | The function runs on a cron-like schedule. |
-| `activityTrigger` | The function is a "worker" step inside a Durable Functions orchestration. |
-| `orchestrationTrigger` | The function is the "coordinator" that sequences activity functions. |
-| `durableClient` | An additional binding that allows the function to start/query orchestrations. |
-
-### 2.4 What is a Binding?
-
-A **binding** is a declarative connection between a Function and an external resource. Bindings have a direction: `IN` (input) or `OUT` (output). A Function can have multiple bindings. For example, `intakeDocument` has both an `httpTrigger` (its trigger) and a `durableClient` (to start an orchestration).
-
-**Important:** 30 Functions does not mean 30 binding rows. Some Functions have multiple bindings, which means the binding inventory contains more rows than there are Functions.
-
-### 2.5 What are Durable Functions?
-
-Durable Functions is a pattern for writing stateful, long-running workflows in Azure Functions. The pattern uses three roles:
-
-1. **Client function** -- receives the initial request (HTTP, Blob, etc.) and starts an orchestration.
-2. **Orchestrator function** -- defines the workflow by calling activity functions in sequence or in parallel.
-3. **Activity function** -- performs a single unit of work (e.g., classify a document, generate an artifact).
-
-Our SOP Factory app (`func-orchestrator-sopfactorydevmlel9`) uses this pattern extensively.
-
----
-
-## 3. DEV Environment Scope
-
-### 3.1 Numbers at a Glance
+## 2. DEV Environment Scope
 
 | Metric | Value |
 |---|---|
@@ -148,19 +54,13 @@ Our SOP Factory app (`func-orchestrator-sopfactorydevmlel9`) uses this pattern e
 | Primary resource group | `helios-dev-us-west3-rg` |
 | Secondary resource group | `uudri-dev-rg` |
 
-### 3.2 Broader Context
-
-The broader inventory discussion identified approximately **27 Function Apps across DEV/QA/PROD**. The capability matrix separately refers to approximately **87 Azure Functions** across three environments. These broader figures have not yet been reconciled and remain an open discovery item. This report covers only the **10 DEV Function Apps and 30 DEV Functions** that were verified through direct Azure API queries.
+The broader inventory identified approximately **27 Function Apps across DEV/QA/PROD** and the capability matrix refers to approximately **87 Azure Functions** across three environments. These broader figures have not yet been reconciled. This report covers only the **10 DEV Function Apps and 30 DEV Functions** verified through direct Azure API queries.
 
 ---
 
-## 4. Investigation Method
+## 3. Investigation Method
 
-We mapped the system in 19 layers. Each layer answers three questions:
-
-1. **What exists?**
-2. **How did we verify it?**
-3. **Where is the evidence?**
+System was mapped in 19 layers. Each layer answers: **What exists? How did we verify it? Where is the evidence?**
 
 | # | Layer | Status |
 |---|---|---|
@@ -175,20 +75,20 @@ We mapped the system in 19 layers. Each layer answers three questions:
 | 9 | CI/CD / release orchestration | Completed (for examined repo) |
 | 10 | Application Insights configuration | Completed |
 | 11 | Azure Monitor diagnostic settings | Completed |
-| 12 | Managed identity | **Not yet started** |
-| 13 | RBAC | **Not yet started** |
-| 14 | Key Vault / access relationships | **Not yet started** |
-| 15 | Networking | **Not yet started** |
-| 16 | Alerts and Action Groups | **Not yet started** |
-| 17 | Runtime health / metrics | **Not yet started** |
-| 18 | Ownership / SLO / incident path | **Not yet started** |
-| 19 | Final end-to-end architecture | **Not yet started** |
+| 12 | Managed identity | Not yet started |
+| 13 | RBAC | Not yet started |
+| 14 | Key Vault / access relationships | Not yet started |
+| 15 | Networking | Not yet started |
+| 16 | Alerts and Action Groups | Not yet started |
+| 17 | Runtime health / metrics | Not yet started |
+| 18 | Ownership / SLO / incident path | Not yet started |
+| 19 | Final end-to-end architecture | Not yet started |
 
 ---
 
-## 5. Function App Inventory (Layer 1-2)
+## 4. Function App Inventory
 
-### 5.1 Complete List of DEV Function Apps
+### 4.1 Complete List of DEV Function Apps
 
 | # | Function App | Resource Group | Purpose (inferred from discovery) |
 |---|---|---|---|
@@ -203,7 +103,7 @@ We mapped the system in 19 layers. Each layer answers three questions:
 | 9 | `kg-event-processor-dev` | `helios-dev-us-west3-rg` | Processes Knowledge Graph DML events from Service Bus |
 | 10 | `UUDRI-Bill-Processor-dev-01` | `helios-dev-us-west3-rg` | Processes utility bills from Blob Storage (second instance) |
 
-### 5.2 How the Inventory Was Discovered
+### 4.2 How the Inventory Was Discovered
 
 Function Apps were listed using:
 
@@ -221,7 +121,7 @@ $url = "https://management.azure.com/subscriptions/a6498579-cfb7-41e9-a957-14375
 $json = az rest --method get --url $url -o json
 ```
 
-### 5.3 Function App to Function Count
+### 4.3 Function App to Function Count
 
 | Function App | Function Count |
 |---|---|
@@ -239,9 +139,7 @@ $json = az rest --method get --url $url -o json
 
 ---
 
-## 6. Complete 30-Function Inventory (Layer 3-4)
-
-The following table lists every Function discovered in DEV, its parent Function App, resource group, runtime language, ARM resource type, and whether it is currently disabled.
+## 5. Complete 30-Function Inventory
 
 | # | Function App | Resource Group | Function Name | Type | Language | Disabled |
 |---|---|---|---|---|---|---|
@@ -276,27 +174,27 @@ The following table lists every Function discovered in DEV, its parent Function 
 | 29 | kg-event-processor-dev | helios-dev-us-west3-rg | ProcessDMLEvent | Microsoft.Web/sites/functions | dotnet-isolated | FALSE |
 | 30 | UUDRI-Bill-Processor-dev-01 | helios-dev-us-west3-rg | BillProcessor | Microsoft.Web/sites/functions | dotnet-isolated | FALSE |
 
-### 6.1 Functions Grouped by Runtime
+### 5.1 Functions Grouped by Runtime
 
 ```
-dotnet-isolated (4 functions across 3 apps)
+dotnet-isolated (4 functions / 3 apps)
     +-- BillProcessor          (uudri-bill-processor-dev)
     +-- HealthCheck            (kg-event-processor-dev)
     +-- ProcessDMLEvent        (kg-event-processor-dev)
     +-- BillProcessor          (UUDRI-Bill-Processor-dev-01)
 
-python (9 functions across 5 apps)
-    +-- health_check                                   (helios-ontology-event-processor-func)
-    +-- ontology_event_processor                       (helios-ontology-event-processor-func)
-    +-- test_relationship_processor                    (helios-ontology-event-processor-func)
-    +-- test_schema_processor                          (helios-ontology-event-processor-func)
-    +-- github_webhook                                 (helios-github-activity-logger-dev-func)
-    +-- cost_ingestion                                 (helios-dev-cost-ingestion)
-    +-- new_device_and_telemetry_classification_agent   (helios-device-telemetry-dev-func)
-    +-- plan_narration_agent                           (ems-plan-narration-function)
-    +-- realized_kpi_listener                          (ems-plan-narration-function)
+python (9 functions / 5 apps)
+    +-- health_check                                    (helios-ontology-event-processor-func)
+    +-- ontology_event_processor                        (helios-ontology-event-processor-func)
+    +-- test_relationship_processor                     (helios-ontology-event-processor-func)
+    +-- test_schema_processor                           (helios-ontology-event-processor-func)
+    +-- github_webhook                                  (helios-github-activity-logger-dev-func)
+    +-- cost_ingestion                                  (helios-dev-cost-ingestion)
+    +-- new_device_and_telemetry_classification_agent    (helios-device-telemetry-dev-func)
+    +-- plan_narration_agent                            (ems-plan-narration-function)
+    +-- realized_kpi_listener                           (ems-plan-narration-function)
 
-node (17 functions across 2 apps)
+node (17 functions / 2 apps)
     +-- projectOnPublish           (func-projector-sopfactorydevmlel9)
     +-- cancelOnboardingSession    (func-orchestrator-sopfactorydevmlel9)
     +-- classifySection            (func-orchestrator-sopfactorydevmlel9)
@@ -318,66 +216,64 @@ node (17 functions across 2 apps)
 
 ---
 
-## 7. Trigger and Binding Inventory (Layer 5)
+## 6. Trigger and Binding Inventory
 
-### 7.1 Trigger Type Summary
+### 6.1 Trigger Type Summary
 
-| Trigger Type | Count | What It Means |
-|---|---|---|
-| httpTrigger | 12 | Functions invoked by HTTP requests (APIs, webhooks, health checks) |
-| activityTrigger | 8 | Durable Functions worker steps called by the orchestrator |
-| durableClient | 5 | Functions that can start or query Durable orchestrations (appears as a second binding) |
-| eventHubTrigger | 4 | Functions that process messages from Azure Event Hubs |
-| blobTrigger | 3 | Functions that react when a file appears in Azure Blob Storage |
-| serviceBusTrigger | 1 | Function that processes messages from Azure Service Bus |
-| orchestrationTrigger | 1 | The single Durable Functions orchestrator that coordinates activities |
-| timerTrigger | 1 | Function that runs on a cron schedule |
+| Trigger Type | Count |
+|---|---|
+| httpTrigger | 12 |
+| activityTrigger | 8 |
+| durableClient | 5 |
+| eventHubTrigger | 4 |
+| blobTrigger | 3 |
+| serviceBusTrigger | 1 |
+| orchestrationTrigger | 1 |
+| timerTrigger | 1 |
 
-### 7.2 Complete Binding Inventory
+### 6.2 Complete Binding Inventory
 
-This table shows every inbound binding discovered via the ARM API. Note that some Functions appear on multiple rows because they have multiple bindings (e.g., `intakeDocument` has both `httpTrigger` and `durableClient`).
+Some Functions appear on multiple rows because they register multiple inbound bindings (e.g., `intakeDocument` has both `httpTrigger` and `durableClient`).
 
-| Function App | Function Name | Language | Trigger Type | Direction | Auth Level | Methods | Route | Connection | Event Hub Name | Queue Name | Topic Name | Subscription Name | Blob Path | Schedule | Disabled |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| uudri-bill-processor-dev | BillProcessor | dotnet-isolated | blobTrigger | In | | | | StorageAccount | | | | | | | FALSE |
-| helios-ontology-event-processor-func | health_check | python | httpTrigger | IN | ANONYMOUS | GET | health | | | | | | | | FALSE |
-| helios-ontology-event-processor-func | ontology_event_processor | python | eventHubTrigger | IN | | | | EventHubConnection | %EVENT_HUB_NAME% | | | | | | FALSE |
-| helios-ontology-event-processor-func | test_relationship_processor | python | httpTrigger | IN | FUNCTION | POST | test_relationship | | | | | | | | FALSE |
-| helios-ontology-event-processor-func | test_schema_processor | python | httpTrigger | IN | FUNCTION | POST | test_schema | | | | | | | | FALSE |
-| helios-github-activity-logger-dev-func | github_webhook | python | httpTrigger | IN | FUNCTION | POST | github/webhook | | | | | | | | FALSE |
-| func-projector-sopfactorydevmlel9 | projectOnPublish | node | httpTrigger | in | function | POST | | | | | | | | | FALSE |
-| helios-dev-cost-ingestion | cost_ingestion | python | timerTrigger | in | | | | | | | | | | 0 0 6 * * * | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | cancelOnboardingSession | node | httpTrigger | in | function | POST | v1/onboarding/{session_id}/cancel | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | classifySection | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | generateFddArtifact | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | generateOntologyArtifact | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | generatePolicyArtifact | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | generateSopArtifact | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | ingestDocument | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | intakeDocument | node | httpTrigger | in | function | POST | v1/documents | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | intakeDocument | node | durableClient | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | onSourceDocument | node | blobTrigger | in | | | | SOURCE_STORAGE | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | onSourceDocument | node | durableClient | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | openPullRequest | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | pipelineRunDetail | node | httpTrigger | in | function | GET | v1/pipeline/runs/{instanceId} | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | pipelineRunDetail | node | durableClient | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | pipelineRuns | node | httpTrigger | in | function | GET | v1/pipeline/runs | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | pipelineRuns | node | durableClient | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | pipelineSmeQueue | node | httpTrigger | in | function | GET | v1/pipeline/sme-queue | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | pipelineSmeQueue | node | durableClient | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | publishOnboardingSession | node | httpTrigger | in | function | POST | v1/onboarding/{session_id}/publish | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | screenSourceText | node | activityTrigger | in | | | | | | | | | | | FALSE |
-| func-orchestrator-sopfactorydevmlel9 | sopFactoryOrchestrator | node | orchestrationTrigger | in | | | | | | | | | | | FALSE |
-| helios-device-telemetry-dev-func | new_device_and_telemetry_classification_agent | python | eventHubTrigger | IN | | | | EVENT_HUB_CONNECTION_STRING | %EVENT_HUB_NAME% | | | | | | FALSE |
-| ems-plan-narration-function | plan_narration_agent | python | eventHubTrigger | IN | | | | EVENT_HUB_CONNECTION_STRING | %EVENT_HUB_NAME% | | | | | | FALSE |
-| ems-plan-narration-function | realized_kpi_listener | python | eventHubTrigger | IN | | | | REALIZED_KPI_EVENT_HUB_CONNECTION_STRING | %REALIZED_KPI_EVENT_HUB_NAME% | | | | | | FALSE |
-| kg-event-processor-dev | HealthCheck | dotnet-isolated | httpTrigger | In | Anonymous | get | health | | | | | | | | FALSE |
-| kg-event-processor-dev | ProcessDMLEvent | dotnet-isolated | serviceBusTrigger | In | | | | SERVICEBUS_CONNECTION_STRING | | | helios-knowledgegraph-events | kg-event-processor | | | FALSE |
-| UUDRI-Bill-Processor-dev-01 | BillProcessor | dotnet-isolated | blobTrigger | In | | | | StorageAccount | | | | | | | FALSE |
+| Function App | Function Name | Language | Trigger Type | Direction | Auth Level | Methods | Route | Connection | Event Hub Name | Topic Name | Subscription Name | Schedule | Disabled |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| uudri-bill-processor-dev | BillProcessor | dotnet-isolated | blobTrigger | In | | | | StorageAccount | | | | | FALSE |
+| helios-ontology-event-processor-func | health_check | python | httpTrigger | IN | ANONYMOUS | GET | health | | | | | | FALSE |
+| helios-ontology-event-processor-func | ontology_event_processor | python | eventHubTrigger | IN | | | | EventHubConnection | %EVENT_HUB_NAME% | | | | FALSE |
+| helios-ontology-event-processor-func | test_relationship_processor | python | httpTrigger | IN | FUNCTION | POST | test_relationship | | | | | | FALSE |
+| helios-ontology-event-processor-func | test_schema_processor | python | httpTrigger | IN | FUNCTION | POST | test_schema | | | | | | FALSE |
+| helios-github-activity-logger-dev-func | github_webhook | python | httpTrigger | IN | FUNCTION | POST | github/webhook | | | | | | FALSE |
+| func-projector-sopfactorydevmlel9 | projectOnPublish | node | httpTrigger | in | function | POST | | | | | | | FALSE |
+| helios-dev-cost-ingestion | cost_ingestion | python | timerTrigger | in | | | | | | | | 0 0 6 * * * | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | cancelOnboardingSession | node | httpTrigger | in | function | POST | v1/onboarding/{session_id}/cancel | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | classifySection | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | generateFddArtifact | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | generateOntologyArtifact | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | generatePolicyArtifact | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | generateSopArtifact | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | ingestDocument | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | intakeDocument | node | httpTrigger | in | function | POST | v1/documents | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | intakeDocument | node | durableClient | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | onSourceDocument | node | blobTrigger | in | | | | SOURCE_STORAGE | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | onSourceDocument | node | durableClient | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | openPullRequest | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | pipelineRunDetail | node | httpTrigger | in | function | GET | v1/pipeline/runs/{instanceId} | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | pipelineRunDetail | node | durableClient | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | pipelineRuns | node | httpTrigger | in | function | GET | v1/pipeline/runs | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | pipelineRuns | node | durableClient | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | pipelineSmeQueue | node | httpTrigger | in | function | GET | v1/pipeline/sme-queue | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | pipelineSmeQueue | node | durableClient | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | publishOnboardingSession | node | httpTrigger | in | function | POST | v1/onboarding/{session_id}/publish | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | screenSourceText | node | activityTrigger | in | | | | | | | | | FALSE |
+| func-orchestrator-sopfactorydevmlel9 | sopFactoryOrchestrator | node | orchestrationTrigger | in | | | | | | | | | FALSE |
+| helios-device-telemetry-dev-func | new_device_and_telemetry_classification_agent | python | eventHubTrigger | IN | | | | EVENT_HUB_CONNECTION_STRING | %EVENT_HUB_NAME% | | | | FALSE |
+| ems-plan-narration-function | plan_narration_agent | python | eventHubTrigger | IN | | | | EVENT_HUB_CONNECTION_STRING | %EVENT_HUB_NAME% | | | | FALSE |
+| ems-plan-narration-function | realized_kpi_listener | python | eventHubTrigger | IN | | | | REALIZED_KPI_EVENT_HUB_CONNECTION_STRING | %REALIZED_KPI_EVENT_HUB_NAME% | | | | FALSE |
+| kg-event-processor-dev | HealthCheck | dotnet-isolated | httpTrigger | In | Anonymous | get | health | | | | | | FALSE |
+| kg-event-processor-dev | ProcessDMLEvent | dotnet-isolated | serviceBusTrigger | In | | | | SERVICEBUS_CONNECTION_STRING | | helios-knowledgegraph-events | kg-event-processor | | FALSE |
+| UUDRI-Bill-Processor-dev-01 | BillProcessor | dotnet-isolated | blobTrigger | In | | | | StorageAccount | | | | | FALSE |
 
-### 7.3 Functions With Multiple Bindings
-
-These five Functions each have two inbound bindings. This means they appear as two rows in the binding inventory above. They all combine an entry trigger with a `durableClient` binding so that they can start or query Durable orchestrations:
+### 6.3 Functions With Multiple Bindings
 
 | Function | Binding 1 (Entry Trigger) | Binding 2 |
 |---|---|---|
@@ -389,11 +285,9 @@ These five Functions each have two inbound bindings. This means they appear as t
 
 ---
 
-## 8. External Dependencies and Data Flows (Layer 6)
+## 7. External Dependencies and Data Flows
 
-This section isolates every Function that depends on an external Azure service (Event Hub, Service Bus, Blob Storage, or Timer). These are the Functions whose availability depends on systems outside the Function App itself.
-
-### 8.1 Event Dependencies Inventory
+### 7.1 Event Dependencies Inventory
 
 | Function App | Function Name | Trigger Type | Connection Setting | Event Hub Name | Topic Name | Subscription Name | Schedule |
 |---|---|---|---|---|---|---|---|
@@ -407,11 +301,11 @@ This section isolates every Function that depends on an external Azure service (
 | kg-event-processor-dev | ProcessDMLEvent | serviceBusTrigger | SERVICEBUS_CONNECTION_STRING | | helios-knowledgegraph-events | kg-event-processor | |
 | UUDRI-Bill-Processor-dev-01 | BillProcessor | blobTrigger | StorageAccount | | | | |
 
-**Note on placeholders:** The binding inventory exposes configuration placeholders such as `%EVENT_HUB_NAME%` and `%REALIZED_KPI_EVENT_HUB_NAME%`. These are intentionally recorded as configuration evidence. We do not replace them with assumed resource names. The actual runtime values come from the Function App's application settings.
+Placeholders such as `%EVENT_HUB_NAME%` and `%REALIZED_KPI_EVENT_HUB_NAME%` are intentionally recorded as configuration evidence. The actual runtime values resolve from the Function App's application settings.
 
-### 8.2 Event Hub Data Flows
+### 7.2 Event Hub Data Flows
 
-Four Functions consume messages from Azure Event Hubs. They are distributed across three separate Function Apps:
+Four Functions consume from Azure Event Hubs across three Function Apps:
 
 ```
 Azure Event Hub(s)
@@ -437,11 +331,9 @@ Azure Event Hub(s)
             Hub name: %REALIZED_KPI_EVENT_HUB_NAME%
 ```
 
-**What this tells us:** `realized_kpi_listener` uses a different connection string and Event Hub name than the other three Event Hub functions, meaning it likely connects to a separate Event Hub instance dedicated to KPI data.
+`realized_kpi_listener` uses a distinct connection string and Event Hub name, indicating it connects to a separate Event Hub instance dedicated to KPI data.
 
-### 8.3 Service Bus Data Flow
-
-One Function consumes from Azure Service Bus using a topic/subscription model:
+### 7.3 Service Bus Data Flow
 
 ```
 Azure Service Bus
@@ -461,11 +353,7 @@ kg-event-processor-dev (app)
 Connection: SERVICEBUS_CONNECTION_STRING
 ```
 
-**What this tells us:** The Knowledge Graph event processor listens to a specific Service Bus topic (`helios-knowledgegraph-events`) through a dedicated subscription (`kg-event-processor`). This is a standard pub/sub pattern where the topic may have other subscribers in other environments or services.
-
-### 8.4 Blob Storage Data Flows
-
-Three Functions react to files being placed in Azure Blob Storage:
+### 7.4 Blob Storage Data Flows
 
 ```
 Azure Blob Storage
@@ -477,53 +365,43 @@ Azure Blob Storage
     +---> onSourceDocument
     |       App: func-orchestrator-sopfactorydevmlel9
     |       Connection: SOURCE_STORAGE
-    |       (also has a durableClient binding to start SOP Factory orchestration)
+    |       (also has durableClient binding to start SOP Factory orchestration)
     |
     +---> BillProcessor
             App: UUDRI-Bill-Processor-dev-01
             Connection: StorageAccount
 ```
 
-**What this tells us:**
-- There are two separate BillProcessor apps (`uudri-bill-processor-dev` and `UUDRI-Bill-Processor-dev-01`), both triggered by blob storage using the same `StorageAccount` connection name. The relationship between these two apps (active/active, migration, or versioning) has not been determined in this discovery phase.
-- The `onSourceDocument` function uses a different storage connection (`SOURCE_STORAGE`), and when a blob arrives it starts a Durable Functions orchestration in the SOP Factory.
-- The exact blob paths were not exposed in the current inventory output and should not be assumed.
+Two separate BillProcessor apps (`uudri-bill-processor-dev` and `UUDRI-Bill-Processor-dev-01`) both trigger on the `StorageAccount` connection. The relationship between these two apps (active/active, migration, or versioning) has not been determined. The exact blob paths were not exposed in the current inventory output.
 
-### 8.5 Timer (Scheduled) Data Flow
-
-One Function runs on a fixed schedule:
+### 7.5 Timer (Scheduled) Flow
 
 ```
-Timer: 0 0 6 * * *
+Timer: 0 0 6 * * * (daily at 06:00 UTC)
     |
     v
-cost_ingestion (function)
-    |
-    v
-helios-dev-cost-ingestion (app)
+cost_ingestion --> helios-dev-cost-ingestion
 ```
-
-**Schedule interpretation:** `0 0 6 * * *` means "run every day at 06:00 UTC." This is a daily cost ingestion job.
 
 ---
 
-## 9. Durable Functions Architecture -- SOP Factory (Layer 5-6)
+## 8. Durable Functions Architecture -- SOP Factory
 
-The `func-orchestrator-sopfactorydevmlel9` Function App is the most complex component discovered. It contains **16 of the 30 Functions** and implements the **Durable Functions** pattern for document processing orchestration. This section explains how all 16 Functions relate to each other.
+`func-orchestrator-sopfactorydevmlel9` contains **16 of the 30 Functions** and implements Durable Functions for document processing orchestration.
 
-### 9.1 Role Classification
+### 8.1 Role Classification
 
-| Role | Functions | What They Do |
-|---|---|---|
-| **HTTP API endpoints** (entry points) | `intakeDocument`, `pipelineRunDetail`, `pipelineRuns`, `pipelineSmeQueue`, `cancelOnboardingSession`, `publishOnboardingSession` | Accept HTTP requests from external clients. Some of these also start or query Durable orchestrations via `durableClient` binding. |
-| **Blob entry point** | `onSourceDocument` | Reacts when a document is uploaded to Blob Storage (`SOURCE_STORAGE` connection). Starts a Durable orchestration. |
-| **Orchestrator** | `sopFactoryOrchestrator` | Coordinates the entire document processing pipeline by calling activity functions in sequence/parallel. |
-| **Activity workers** | `classifySection`, `ingestDocument`, `screenSourceText`, `generateFddArtifact`, `generateOntologyArtifact`, `generatePolicyArtifact`, `generateSopArtifact`, `openPullRequest` | Perform individual processing steps. Called by the orchestrator. |
+| Role | Functions |
+|---|---|
+| **HTTP API endpoints** | `intakeDocument`, `pipelineRunDetail`, `pipelineRuns`, `pipelineSmeQueue`, `cancelOnboardingSession`, `publishOnboardingSession` |
+| **Blob entry point** | `onSourceDocument` |
+| **Orchestrator** | `sopFactoryOrchestrator` |
+| **Activity workers** | `classifySection`, `ingestDocument`, `screenSourceText`, `generateFddArtifact`, `generateOntologyArtifact`, `generatePolicyArtifact`, `generateSopArtifact`, `openPullRequest` |
 
-### 9.2 Execution Flow
+### 8.2 Execution Flow
 
 ```
-  Entry Points (how work enters the system)
+  Entry Points
   ==========================================
 
   HTTP POST /v1/documents             Blob upload to SOURCE_STORAGE
@@ -538,6 +416,7 @@ The `func-orchestrator-sopfactorydevmlel9` Function App is the most complex comp
                    Starts Orchestration
                           |
                           v
+
   Orchestrator
   ==========================================
                 sopFactoryOrchestrator
@@ -547,7 +426,6 @@ The `func-orchestrator-sopfactorydevmlel9` Function App is the most complex comp
          |                |                |
          v                v                v
    classifySection  ingestDocument  screenSourceText
-   (activityTrigger) (activityTrigger) (activityTrigger)
          |                |                |
          +----------------+----------------+
                           |
@@ -556,215 +434,99 @@ The `func-orchestrator-sopfactorydevmlel9` Function App is the most complex comp
            v              v              v              v
    generateFdd    generateOntology  generatePolicy  generateSop
    Artifact       Artifact          Artifact        Artifact
-   (activity)     (activity)        (activity)      (activity)
                           |
                           v
                    openPullRequest
-                    (activityTrigger)
 
 
   Query/Management Endpoints
   ==========================================
 
-  GET  /v1/pipeline/runs                  --> pipelineRuns (httpTrigger + durableClient)
-  GET  /v1/pipeline/runs/{instanceId}     --> pipelineRunDetail (httpTrigger + durableClient)
-  GET  /v1/pipeline/sme-queue             --> pipelineSmeQueue (httpTrigger + durableClient)
-  POST /v1/onboarding/{session_id}/cancel --> cancelOnboardingSession (httpTrigger)
-  POST /v1/onboarding/{session_id}/publish--> publishOnboardingSession (httpTrigger)
+  GET  /v1/pipeline/runs                  --> pipelineRuns
+  GET  /v1/pipeline/runs/{instanceId}     --> pipelineRunDetail
+  GET  /v1/pipeline/sme-queue             --> pipelineSmeQueue
+  POST /v1/onboarding/{session_id}/cancel --> cancelOnboardingSession
+  POST /v1/onboarding/{session_id}/publish--> publishOnboardingSession
 ```
 
-### 9.3 How This Works End-to-End
-
-1. A document arrives either via HTTP POST to `/v1/documents` (handled by `intakeDocument`) or via a blob upload to `SOURCE_STORAGE` (handled by `onSourceDocument`).
-2. Both entry points use their `durableClient` binding to start a new instance of the `sopFactoryOrchestrator`.
-3. The orchestrator executes activity functions in order: first `classifySection`, `ingestDocument`, `screenSourceText` to analyze the document, then `generateFddArtifact`, `generateOntologyArtifact`, `generatePolicyArtifact`, `generateSopArtifact` to produce output artifacts, and finally `openPullRequest` to submit the results.
-4. External clients can query pipeline status through the HTTP GET endpoints (`pipelineRuns`, `pipelineRunDetail`, `pipelineSmeQueue`), which use their `durableClient` bindings to query the Durable Functions runtime for orchestration state.
-5. Onboarding sessions can be managed via `cancelOnboardingSession` and `publishOnboardingSession`.
-
-**Why this matters for SRE:** This is the most architecturally significant finding in the DEV estate. A single Function App hosts a complete document processing pipeline with 16 tightly coupled functions. Any outage in this app affects the entire SOP Factory workflow.
+A document arrives via HTTP POST (`intakeDocument`) or blob upload (`onSourceDocument`). Both entry points start a `sopFactoryOrchestrator` instance via their `durableClient` binding. The orchestrator calls activity functions in sequence: classify, ingest, screen, then generate artifacts, and finally open a pull request. Pipeline status is queryable through the GET endpoints which use `durableClient` to read orchestration state.
 
 ---
 
-## 10. Application-by-Application Architecture (Layer 5-6)
+## 9. Application-by-Application Architecture
 
-This section documents each Function App individually, showing its internal structure and external dependencies.
+### 9.1 uudri-bill-processor-dev
 
-### 10.1 uudri-bill-processor-dev
-
-```
-Blob Storage (StorageAccount)
-     |
-     v
-BillProcessor (blobTrigger)
-     |
-     v
-dotnet-isolated runtime
-```
-
-- **Functions:** 1 (BillProcessor)
-- **Trigger:** blobTrigger
-- **Connection:** StorageAccount
+- **Functions:** 1 (`BillProcessor`)
 - **Runtime:** dotnet-isolated
-- **What it does:** Processes utility bills when files appear in blob storage.
+- **Trigger:** blobTrigger / Connection: `StorageAccount`
 
-### 10.2 helios-ontology-event-processor-func
+### 9.2 helios-ontology-event-processor-func
 
-```
-HTTP
- +-- health_check           (GET /health, ANONYMOUS)
- +-- test_relationship_processor   (POST /test_relationship, FUNCTION auth)
- +-- test_schema_processor         (POST /test_schema, FUNCTION auth)
-
-Event Hub (EventHubConnection / %EVENT_HUB_NAME%)
- +-- ontology_event_processor
-```
-
-- **Functions:** 4 (1 event-driven, 3 HTTP)
+- **Functions:** 4
 - **Runtime:** Python 3.11
-- **What it does:** Processes ontology events from Event Hub. Also exposes health check and test endpoints for schema and relationship processing.
-- **Note:** The health check is unauthenticated (ANONYMOUS). The test endpoints require a Function key (FUNCTION auth level).
+- **HTTP:** `health_check` (GET /health, ANONYMOUS), `test_relationship_processor` (POST /test_relationship, FUNCTION), `test_schema_processor` (POST /test_schema, FUNCTION)
+- **Event Hub:** `ontology_event_processor` (Connection: `EventHubConnection`, Hub: `%EVENT_HUB_NAME%`)
 
-### 10.3 helios-github-activity-logger-dev-func
+### 9.3 helios-github-activity-logger-dev-func
 
-```
-GitHub webhook
-     |
-     v
-github_webhook (POST /github/webhook, FUNCTION auth)
-     |
-     v
-Python 3.11 runtime
-```
+- **Functions:** 1 (`github_webhook`)
+- **Runtime:** Python 3.11
+- **Trigger:** httpTrigger (POST /github/webhook, FUNCTION auth)
 
-- **Functions:** 1 (github_webhook)
-- **Trigger:** httpTrigger (POST)
-- **Route:** github/webhook
-- **What it does:** Receives GitHub webhook payloads and logs activity.
+### 9.4 func-projector-sopfactorydevmlel9
 
-### 10.4 func-projector-sopfactorydevmlel9
+- **Functions:** 1 (`projectOnPublish`)
+- **Runtime:** Node.js 20
+- **Trigger:** httpTrigger (POST, FUNCTION auth)
 
-```
-HTTP
- |
- v
-projectOnPublish (POST, FUNCTION auth)
- |
- v
-Node.js 20 runtime
-```
+### 9.5 helios-dev-cost-ingestion
 
-- **Functions:** 1 (projectOnPublish)
-- **Trigger:** httpTrigger (POST)
-- **What it does:** Part of the SOP Factory system; handles publish projections via HTTP.
+- **Functions:** 1 (`cost_ingestion`)
+- **Runtime:** Python 3.11
+- **Trigger:** timerTrigger / Schedule: `0 0 6 * * *` (daily at 06:00 UTC)
+- **Note:** This app is missing Application Insights configuration (see Section 11).
 
-### 10.5 helios-dev-cost-ingestion
-
-```
-Timer (0 0 6 * * *)
- |
- v
-cost_ingestion
- |
- v
-Python 3.11 runtime
-```
-
-- **Functions:** 1 (cost_ingestion)
-- **Trigger:** timerTrigger
-- **Schedule:** `0 0 6 * * *` (daily at 06:00 UTC)
-- **What it does:** Ingests cost data on a daily schedule.
-- **SRE concern:** This app is missing Application Insights configuration (see Section 12).
-
-### 10.6 func-orchestrator-sopfactorydevmlel9
-
-See [Section 9](#9-durable-functions-architecture----sop-factory-layer-5-6) for the complete architecture. Summary:
+### 9.6 func-orchestrator-sopfactorydevmlel9
 
 - **Functions:** 16
 - **Runtime:** Node.js 20
 - **Pattern:** Durable Functions (client/orchestrator/activity)
-- **Entry points:** HTTP (POST/GET) and Blob (SOURCE_STORAGE)
-- **What it does:** Complete SOP Factory document processing pipeline.
+- **Entry points:** HTTP (POST/GET) and Blob (`SOURCE_STORAGE`)
+- See [Section 8](#8-durable-functions-architecture----sop-factory) for full topology.
 
-### 10.7 helios-device-telemetry-dev-func
+### 9.7 helios-device-telemetry-dev-func
 
-```
-Event Hub (EVENT_HUB_CONNECTION_STRING / %EVENT_HUB_NAME%)
-    |
-    v
-new_device_and_telemetry_classification_agent
-    |
-    v
-Python 3.11 runtime
-```
+- **Functions:** 1 (`new_device_and_telemetry_classification_agent`)
+- **Runtime:** Python 3.11
+- **Trigger:** eventHubTrigger (Connection: `EVENT_HUB_CONNECTION_STRING`, Hub: `%EVENT_HUB_NAME%`)
 
-- **Functions:** 1 (new_device_and_telemetry_classification_agent)
-- **Trigger:** eventHubTrigger
-- **What it does:** Classifies new devices and telemetry data from Event Hub events.
+### 9.8 ems-plan-narration-function
 
-### 10.8 ems-plan-narration-function
-
-```
-Event Hub (EVENT_HUB_CONNECTION_STRING / %EVENT_HUB_NAME%)
-    |
-    +---> plan_narration_agent
-
-Event Hub (REALIZED_KPI_EVENT_HUB_CONNECTION_STRING / %REALIZED_KPI_EVENT_HUB_NAME%)
-    |
-    +---> realized_kpi_listener
-```
-
-- **Functions:** 2 (plan_narration_agent, realized_kpi_listener)
+- **Functions:** 2
 - **Runtime:** Python 3.12
-- **What it does:** Narrates energy management plans and listens for realized KPI events.
-- **Note:** The two functions use different Event Hub connections, meaning they consume from different Event Hub instances.
-- **CI/CD:** This is the Function App examined in the release-orchestration analysis (see Section 13).
+- **Event Hub:** `plan_narration_agent` (Connection: `EVENT_HUB_CONNECTION_STRING`, Hub: `%EVENT_HUB_NAME%`)
+- **Event Hub:** `realized_kpi_listener` (Connection: `REALIZED_KPI_EVENT_HUB_CONNECTION_STRING`, Hub: `%REALIZED_KPI_EVENT_HUB_NAME%`)
+- The two functions use different Event Hub connections, consuming from different Event Hub instances.
+- This is the Function App examined in the CI/CD release-orchestration analysis (see Section 12).
 
-### 10.9 kg-event-processor-dev
+### 9.9 kg-event-processor-dev
 
-```
-HTTP
- |
- v
-HealthCheck (GET /health, Anonymous auth)
-
-Service Bus
- |
- v
-Topic: helios-knowledgegraph-events
- |
- v
-Subscription: kg-event-processor
- |
- v
-ProcessDMLEvent (SERVICEBUS_CONNECTION_STRING)
-```
-
-- **Functions:** 2 (HealthCheck, ProcessDMLEvent)
+- **Functions:** 2
 - **Runtime:** dotnet-isolated
-- **What it does:** Processes Knowledge Graph data manipulation events (DML) from Service Bus. Exposes a health check endpoint.
+- **HTTP:** `HealthCheck` (GET /health, Anonymous)
+- **Service Bus:** `ProcessDMLEvent` (Connection: `SERVICEBUS_CONNECTION_STRING`, Topic: `helios-knowledgegraph-events`, Subscription: `kg-event-processor`)
 
-### 10.10 UUDRI-Bill-Processor-dev-01
+### 9.10 UUDRI-Bill-Processor-dev-01
 
-```
-Blob Storage (StorageAccount)
-     |
-     v
-BillProcessor (blobTrigger)
-     |
-     v
-dotnet-isolated runtime
-```
-
-- **Functions:** 1 (BillProcessor)
-- **Trigger:** blobTrigger
-- **Connection:** StorageAccount
-- **What it does:** Identical trigger configuration to `uudri-bill-processor-dev`. The relationship between the two Bill Processor apps (parallel, migration, or separate scope) is not yet determined.
+- **Functions:** 1 (`BillProcessor`)
+- **Runtime:** dotnet-isolated
+- **Trigger:** blobTrigger / Connection: `StorageAccount`
+- Identical trigger configuration to `uudri-bill-processor-dev`.
 
 ---
 
-## 11. SCM and Platform Configuration (Layer 7)
-
-### 11.1 Platform Configuration Table
+## 10. SCM and Platform Configuration
 
 Queried via `Microsoft.Web/sites/<app>/config/web`:
 
@@ -781,29 +543,17 @@ Queried via `Microsoft.Web/sites/<app>/config/web`:
 | kg-event-processor-dev | None | | FALSE | FtpsOnly | Enabled | 1.2 |
 | UUDRI-Bill-Processor-dev-01 | VSTSRM | | TRUE | Disabled | Enabled | 1.2 |
 
-### 11.2 How to Read This Table
-
-- **SCM Type:** How deployments reach the app. `VSTSRM` = Azure DevOps Release Management. `GitHubAction` = GitHub Actions. `None` = no SCM integration registered (may still be deployed via CLI/ZipDeploy).
-- **Linux Fx Version:** The runtime stack. Empty for dotnet-isolated apps (they use a different configuration path).
-- **Always On:** Whether the app is kept warm. Only the two Bill Processor apps have this enabled. All others will cold-start after periods of inactivity.
-- **FTPS:** `FtpsOnly` = FTPS allowed but only over TLS. `Disabled` = no FTP/FTPS access.
-- **Public Network:** All apps have public network access `Enabled`. VNet integration has not been verified yet.
-- **Min TLS:** All apps enforce TLS 1.2 as the minimum version.
-
-### 11.3 Observed Runtimes
-
-```
-PYTHON|3.11  -- used by 5 apps
-PYTHON|3.12  -- used by 1 app (ems-plan-narration-function)
-NODE|20      -- used by 2 apps
-dotnet-isolated -- used by 3 apps (shown via empty LinuxFxVersion)
-```
+**Key observations:**
+- SCM Type `VSTSRM` = Azure DevOps Release Management. `GitHubAction` = GitHub Actions. `None` = no SCM integration registered (may still be deployed via CLI/ZipDeploy).
+- `AlwaysOn = TRUE` only on the two Bill Processor apps. All others cold-start after inactivity.
+- All apps enforce `MinTLS = 1.2`.
+- All apps have `PublicNetwork = Enabled`. VNet integration has not been verified.
 
 ---
 
-## 12. Observability Configuration (Layer 10-11)
+## 11. Observability Configuration
 
-### 12.1 Application Insights Configuration
+### 11.1 Application Insights Configuration
 
 Queried via `Microsoft.Web/sites/<app>/config/appsettings/list`:
 
@@ -820,20 +570,16 @@ Queried via `Microsoft.Web/sites/<app>/config/appsettings/list`:
 | kg-event-processor-dev | helios-dev-us-west3-rg | Present | Present | ~4 | dotnet-isolated |
 | UUDRI-Bill-Processor-dev-01 | helios-dev-us-west3-rg | Present | Present | ~4 | dotnet-isolated |
 
-**Key observations:**
+- 9 out of 10 apps have `APPLICATIONINSIGHTS_CONNECTION_STRING`.
+- 5 out of 10 also have the legacy `APPINSIGHTS_INSTRUMENTATIONKEY`.
+- **`helios-dev-cost-ingestion` has neither setting** -- the daily cost ingestion job is potentially running without Application Insights telemetry.
+- Missing instrumentation key alone does not indicate missing App Insights; connection-string-based configuration is sufficient.
 
-- 9 out of 10 apps have `APPLICATIONINSIGHTS_CONNECTION_STRING` configured.
-- 5 out of 10 apps also have the legacy `APPINSIGHTS_INSTRUMENTATIONKEY`.
-- **`helios-dev-cost-ingestion` has neither setting.** This means the daily cost ingestion job is potentially running without any Application Insights telemetry.
-- All apps run Functions Extension Version `~4`.
+### 11.2 Azure Monitor Diagnostic Settings
 
-**Important interpretation:** Missing instrumentation key alone does not mean App Insights is absent. Connection-string-based configuration is the modern approach and is sufficient. However, `helios-dev-cost-ingestion` is missing both settings.
+Queried via `Microsoft.Insights/diagnosticSettings`:
 
-### 12.2 Azure Monitor Diagnostic Settings
-
-Queried via `Microsoft.Insights/diagnosticSettings` for all 10 Function Apps:
-
-| Function App | Diagnostic Settings Found | Diagnostic Setting Count |
+| Function App | Diagnostic Settings Found | Count |
 |---|---|---|
 | uudri-bill-processor-dev | No | 0 |
 | helios-ontology-event-processor-func | No | 0 |
@@ -846,23 +592,21 @@ Queried via `Microsoft.Insights/diagnosticSettings` for all 10 Function Apps:
 | kg-event-processor-dev | No | 0 |
 | UUDRI-Bill-Processor-dev-01 | No | 0 |
 
-**Result:** 10 out of 10 DEV Function Apps have zero resource-level diagnostic settings.
-
-**Correct SRE interpretation:** No resource-level Azure Monitor diagnostic settings were returned for the queried Function App resources. This means platform logs, audit logs, and scaling logs are not being forwarded to a Log Analytics Workspace, Event Hub, or Storage Account from these resources. However, this does not by itself prove that no telemetry or monitoring exists -- Application Insights telemetry (confirmed as configured for 9 of 10 apps) is a separate data path. We must still trace the actual Application Insights resources, telemetry destinations, alert rules, and Action Groups.
+**10 out of 10** DEV Function Apps have zero resource-level diagnostic settings. Platform logs, audit logs, and scaling logs are not being forwarded to a Log Analytics Workspace, Event Hub, or Storage Account. This does not by itself prove no monitoring exists -- App Insights telemetry is a separate data path. Actual App Insights resources, alert rules, and Action Groups must still be traced.
 
 ---
 
-## 13. CI/CD and Release Orchestration (Layer 8-9)
+## 12. CI/CD and Release Orchestration
 
-### 13.1 Repository Investigated
+### 12.1 Repository Investigated
 
 ```
 qcells-hqct / helios-plan-narration-backend
 ```
 
-This repository deploys to the `ems-plan-narration-function` Function App.
+Deploys to: `ems-plan-narration-function`
 
-### 13.2 GitHub Actions Workflows Found
+### 12.2 GitHub Actions Workflows Found
 
 | Workflow File | Target Environment |
 |---|---|
@@ -871,7 +615,7 @@ This repository deploys to the `ems-plan-narration-function` Function App.
 | `.github/workflows/deploy-function-app-prod.yml` | PROD |
 | `.github/workflows/test-function-app.yml` | (test only, not linked to deploy) |
 
-### 13.3 DEV Release Flow
+### 12.3 DEV Release Flow
 
 ```
 GitHub push or workflow_dispatch
@@ -896,7 +640,7 @@ Post-deploy validation
   Verify function registration
 ```
 
-### 13.4 GitHub Repository Secrets (Names Only)
+### 12.4 GitHub Repository Secrets (Names Only)
 
 | Secret Name |
 |---|
@@ -905,9 +649,7 @@ Post-deploy validation
 | AZURE_SUBSCRIPTION_ID |
 | AZURE_TENANT_ID |
 
-**Note:** Secret values are never recorded. Only the presence of the configuration is documented.
-
-### 13.5 GitHub Repository Variables
+### 12.5 GitHub Repository Variables
 
 | Variable Name |
 |---|
@@ -920,19 +662,19 @@ Post-deploy validation
 | EVENT_HUB_NAME |
 | OBJECT_STORE_SERVICE_URL |
 
-### 13.6 SRE Observations on the Release Pipeline
+### 12.6 SRE Observations on Release Pipeline
 
-1. **The deploy workflow does not run pytest.** The `test-function-app.yml` workflow exists but is not linked through `needs:` or `workflow_call`. CI is therefore primarily a syntax/compile gate.
-2. **DEV/QA/PROD are separate workflows.** There is no demonstrated build-once/immutable-artifact promotion path. Each environment has its own workflow file, which means the same code may be built differently in each environment.
-3. **PROD is manually dispatched** in the examined workflow. The exact approval behavior depends on GitHub Environment protection rules, which must be verified separately.
-4. **Post-deployment validation exists** (state check and function registration verification), but there is **no automatic rollback** if the validation fails.
-5. **Key Vault reference:** The DEV workflow references `helios-dev-backend-kv` for app settings.
+1. The deploy workflow does not run `pytest`. `test-function-app.yml` exists but is not linked via `needs:` or `workflow_call`. CI is primarily a syntax/compile gate.
+2. DEV/QA/PROD are separate workflow files. No build-once/immutable-artifact promotion.
+3. PROD is manually dispatched. Exact approval behavior depends on GitHub Environment protection rules (not yet verified).
+4. Post-deployment validation exists (state check + function registration), but no automatic rollback on failure.
+5. Key Vault referenced: `helios-dev-backend-kv`.
 
-### 13.7 Deployment History Evidence
+### 12.7 Deployment History Evidence
 
-Deployment records were queried via `Microsoft.Web/sites/<app>/deployments`. The following apps had deployment records returned by the ARM API:
+Queried via `Microsoft.Web/sites/<app>/deployments`:
 
-**uudri-bill-processor-dev** -- 10 deployments recorded
+**uudri-bill-processor-dev** -- 10 deployments
 
 | Deployer | Most Recent | Method |
 |---|---|---|
@@ -942,7 +684,7 @@ Deployment records were queried via `Microsoft.Web/sites/<app>/deployments`. The
 | ZipDeploy | 2026-04-22 (4 deployments) | Push deployment |
 | ZipDeploy | 2026-04-21 | Push deployment |
 
-**helios-github-activity-logger-dev-func** -- 6 deployments recorded
+**helios-github-activity-logger-dev-func** -- 6 deployments
 
 | Deployer | Most Recent | Method |
 |---|---|---|
@@ -951,7 +693,7 @@ Deployment records were queried via `Microsoft.Web/sites/<app>/deployments`. The
 | az_cli_functions | 2026-03-25 (2 deployments) | Push deployment |
 | az_cli_functions | 2026-03-24 | Push deployment |
 
-**ems-plan-narration-function** -- 10 deployments recorded
+**ems-plan-narration-function** -- 10 deployments
 
 | Deployer | Most Recent | Method | Repo |
 |---|---|---|---|
@@ -962,7 +704,7 @@ Deployment records were queried via `Microsoft.Web/sites/<app>/deployments`. The
 | GITHUB_ZIP_DEPLOY_FUNCTIONS_V1 | 2026-07-30 (3 deployments) | GitHub Actions | qcells-hqct/helios-plan-narration-backend |
 | GITHUB_ZIP_DEPLOY_FUNCTIONS_V1 | 2026-07-29 | GitHub Actions | qcells-hqct/helios-plan-narration-backend |
 
-**kg-event-processor-dev** -- 10 deployments recorded
+**kg-event-processor-dev** -- 10 deployments
 
 | Deployer | Most Recent | Method |
 |---|---|---|
@@ -975,7 +717,7 @@ Deployment records were queried via `Microsoft.Web/sites/<app>/deployments`. The
 | az_cli_functions | 2026-06-15 | Push deployment |
 | az_cli_functions | 2026-06-12 | Push deployment |
 
-**UUDRI-Bill-Processor-dev-01** -- 3 deployments recorded
+**UUDRI-Bill-Processor-dev-01** -- 3 deployments
 
 | Deployer | Most Recent | Method | Repo |
 |---|---|---|---|
@@ -983,13 +725,13 @@ Deployment records were queried via `Microsoft.Web/sites/<app>/deployments`. The
 | ZipDeploy | 2026-06-05 | Push deployment | |
 | VSTS_FUNCTIONS_V1 | 2026-05-22 | Azure DevOps Release | qcells-hqct/UUDRI-Backend (Release-18, branch: develop) |
 
-**Apps with no deployment records returned:** `helios-ontology-event-processor-func`, `func-projector-sopfactorydevmlel9`, `helios-dev-cost-ingestion`, `func-orchestrator-sopfactorydevmlel9`, `helios-device-telemetry-dev-func`. An empty deployment list means only that the queried ARM API returned no records; it is not proof that an app was never deployed.
+**Apps with no deployment records returned:** `helios-ontology-event-processor-func`, `func-projector-sopfactorydevmlel9`, `helios-dev-cost-ingestion`, `func-orchestrator-sopfactorydevmlel9`, `helios-device-telemetry-dev-func`. An empty deployment list means only that the ARM API returned no records; it is not proof that an app was never deployed.
 
 ---
 
-## 14. Logic App / Workflow App Discovery
+## 13. Logic App / Workflow App Discovery
 
-Three Logic Apps (workflow apps) were identified in the same resource group:
+Three Logic Apps (workflow apps) identified in the same resource group:
 
 | Resource Name | Resource Type | Kind | Location | Resource Group |
 |---|---|---|---|---|
@@ -997,7 +739,7 @@ Three Logic Apps (workflow apps) were identified in the same resource group:
 | helios-data-market-eh-eventstream-monitor-dev | Microsoft.Web/sites | functionapp,workflowapp | westus3 | helios-dev-us-west3-rg |
 | helios-data-weather-eh-eventstream-monitor-dev | Microsoft.Web/sites | functionapp,workflowapp | westus3 | helios-dev-us-west3-rg |
 
-### 14.1 Workflow Actions Discovered
+Workflow actions discovered:
 
 ```
 Get_Config
@@ -1010,34 +752,11 @@ Condition_Non_Ok
 Emit_HealthCheck
 ```
 
-**Important:** The HTTP URI values within these workflows were found to be workflow expressions rather than simple literal URLs. They should not be treated as static dependency hosts without resolving the expression/config source.
+The HTTP URI values within these workflows are workflow expressions, not literal URLs. They should not be treated as static dependency hosts without resolving the expression/config source.
 
 ---
 
-## 15. Evidence Files
-
-All evidence is stored under:
-
-```
-C:\AzureFunctionInventory\Day3\Investigation
-```
-
-| CSV File | What It Proves |
-|---|---|
-| DEV-Function-Inventory.csv | Which Functions exist inside each Function App |
-| DEV-Binding-Inventory.csv | How each Function is triggered and bound to external services |
-| DEV-Event-Dependency-Inventory.csv | Event Hub, Service Bus, Blob, and Timer dependencies exposed by bindings |
-| DEV-SCM-Configuration.csv | Runtime, SCM type, and platform configuration per Function App |
-| DEV-AppInsights-Configuration.csv | Presence or absence of Application Insights settings and Functions runtime settings |
-| DEV-Diagnostic-Summary.csv | Whether resource-level Azure Monitor diagnostic settings were found |
-
-These CSVs are not merely attachments. They are the reproducible evidence behind the architecture. Every table and diagram in this document can be traced back to the data in these files.
-
----
-
-## 16. Current DEV Architecture Diagram
-
-This is an evidence-based current-state model showing how all discovered components connect:
+## 14. Current DEV Architecture Diagram
 
 ```
                                GitHub Repositories
@@ -1088,137 +807,62 @@ This is an evidence-based current-state model showing how all discovered compone
            (9/10 apps configured)            (0/10 diagnostic settings)
 ```
 
-**This is a current-state discovery diagram, not a target architecture.** Identity, network paths, alerting, and actual telemetry destinations still need to be mapped.
-
 ---
 
-## 17. Capability Matrix Update
+## 15. Capability Matrix Update
 
-Based on our DEV findings, the Azure Functions row in the Release Orchestration Capability Matrix can now be updated:
+Based on DEV findings, the Azure Functions row can now be updated:
 
 | Capability | Previous | Current DEV Status | Evidence |
 |---|---|---|---|
-| Deploy on merge | unknown | **Partially mapped** | GitHub Actions workflow found for `ems-plan-narration-function`; Azure DevOps VSTS releases for UUDRI; az_cli_functions deployments for others. Not all repos examined. |
-| Promotion gates (dev -> QA -> prod) | unknown | **Partially mapped** | Separate workflow files found for DEV/QA/PROD. No immutable artifact promotion. PROD is manually dispatched. |
-| Scheduled verification | not started | **Not started** | No automated post-deployment integration tests or recurring verifiers were found. |
-| Alerting | not started | **Not started** | No Alert Rules or Action Groups have been mapped yet (next phase). |
-| Observability + cost | not started | **Partially mapped** | 9/10 apps have App Insights connection string. 1/10 is missing. 0/10 have resource-level diagnostic settings. |
+| Deploy on merge | unknown | **Partially mapped** | GitHub Actions workflow found for `ems-plan-narration-function`; Azure DevOps VSTS releases for UUDRI; `az_cli_functions` deployments for others. Not all repos examined. |
+| Promotion gates (dev -> QA -> prod) | unknown | **Partially mapped** | Separate workflow files for DEV/QA/PROD. No immutable artifact promotion. PROD manually dispatched. |
+| Scheduled verification | not started | **Not started** | No automated post-deployment integration tests or recurring verifiers found. |
+| Alerting | not started | **Not started** | No Alert Rules or Action Groups mapped yet. |
+| Observability + cost | not started | **Partially mapped** | 9/10 apps have App Insights connection string. 1/10 missing. 0/10 have resource-level diagnostic settings. |
 | Reporting / audit | not started | **Baseline established** | Deployment history, configuration, and binding data captured in CSV evidence files. |
 
-### 17.1 Detailed SRE Capability Position
+### 15.1 Detailed SRE Capability Position
 
 | Area | Status |
 |---|---|
 | Resource inventory | Mapped |
 | Function inventory | Mapped |
 | Trigger/bindings | Mapped |
-| Event dependencies | Partially mapped (connection names recorded; actual Event Hub/Service Bus resource IDs not resolved) |
+| Event dependencies | Partially mapped (connection names recorded; actual resource IDs not resolved) |
 | Durable architecture | Mapped for `func-orchestrator-sopfactorydevmlel9` |
 | Platform configuration | Partially mapped |
 | CI/CD | Mapped for `helios-plan-narration-backend` repository |
 | Observability config | Partially mapped |
-| Alerting | **Not yet mapped** |
-| Scheduled verification | **Not yet mapped** |
-| Reporting/audit | **Not yet mapped** |
-| Identity/RBAC | **Not yet mapped** |
-| Networking | **Not yet mapped** |
-| SLO/SLI | **Not yet mapped** |
+| Alerting | Not yet mapped |
+| Scheduled verification | Not yet mapped |
+| Reporting/audit | Not yet mapped |
+| Identity/RBAC | Not yet mapped |
+| Networking | Not yet mapped |
+| SLO/SLI | Not yet mapped |
 
 ---
 
-## 18. What Has Been Verified vs What Remains Unknown
+## 16. Evidence Files
 
-### 18.1 Verified or Partially Verified
-
-- 10 DEV Function Apps and their resource groups
-- 30 registered Functions and their names
-- Languages/runtimes for every Function
-- Trigger types and binding configurations
-- Event Hub dependencies (4 Functions, connection names and hub name placeholders)
-- Service Bus dependency (1 Function, topic and subscription identified)
-- Blob-triggered workloads (3 Functions, connection names identified)
-- Timer schedule (1 Function, cron expression captured)
-- Durable Function patterns (orchestrator, activities, clients mapped)
-- SCM/web platform configuration (SCM type, runtime version, AlwaysOn, FTPS, TLS, public network)
-- Deployment history where exposed by the ARM API
-- DEV CI/CD workflow for helios-plan-narration-backend
-- Repository secret and variable names (not values)
-- App Insights-related app settings (connection string and instrumentation key presence)
-- Resource-level diagnostic settings (confirmed absent for all 10 apps)
-- Three event-stream monitoring Logic Apps
-
-### 18.2 Not Yet Fully Verified
-
-- Managed identity assignments
-- RBAC role assignments
-- Key Vault access paths and policies
-- Storage account permissions
-- Event Hub permissions and consumer groups
-- Service Bus permissions
-- Network/VNet integration
-- Private endpoints
-- Actual Application Insights resource IDs and telemetry destinations
-- Alert rules
-- Action Groups
-- SLO/SLI definitions
-- Runtime failure rate, latency, and throttling metrics
-- Retry and dead-letter behavior
-- Event Hub lag and consumer group offsets
-- Service Bus backlog
-- Ownership and on-call assignment
-- RTO/RPO definitions
-- Incident escalation paths
-- Full QA/PROD comparison
-
----
-
-## 19. Next Discovery Phase
-
-No remediation should be implemented until the discovery is complete. The next investigation sequence is:
+All evidence stored under:
 
 ```
-Phase 2 Discovery Sequence:
-
- 1. Managed Identity
-         |
-         v
- 2. RBAC role assignments
-         |
-         v
- 3. Key Vault access paths
-         |
-         v
- 4. Storage / Event Hub / Service Bus permissions
-         |
-         v
- 5. VNet / network integration / private endpoints
-         |
-         v
- 6. Actual Application Insights resource mapping
-         |
-         v
- 7. Alert rules + Action Groups
-         |
-         v
- 8. Runtime metrics (failure rate, latency, throttling)
-         |
-         v
- 9. Event Hub / Service Bus health (lag, backlog, dead-letter)
-         |
-         v
-10. Ownership + SLO/SLI + incident path
-         |
-         v
-11. Final DEV architecture
+C:\AzureFunctionInventory\Day3\Investigation
 ```
 
-Once the DEV model is complete, the same investigation methodology will be applied to **QA** and **PROD** for cross-environment comparison and promotion-path analysis.
+| CSV File | What It Proves |
+|---|---|
+| DEV-Function-Inventory.csv | Which Functions exist inside each Function App |
+| DEV-Binding-Inventory.csv | How each Function is triggered and bound to external services |
+| DEV-Event-Dependency-Inventory.csv | Event Hub, Service Bus, Blob, and Timer dependencies exposed by bindings |
+| DEV-SCM-Configuration.csv | Runtime, SCM type, and platform configuration per Function App |
+| DEV-AppInsights-Configuration.csv | Presence or absence of Application Insights settings and Functions runtime settings |
+| DEV-Diagnostic-Summary.csv | Whether resource-level Azure Monitor diagnostic settings were found |
 
 ---
 
-## 20. Appendix A: Investigation Commands
-
-This appendix documents the exact PowerShell commands used to produce the evidence CSVs. These commands can be re-run to reproduce or update the inventory.
+## 17. Appendix: Investigation Commands
 
 ### A.1 Function App List
 
@@ -1314,15 +958,15 @@ $scmInventory = foreach ($app in $apps) {
     $url = "https://management.azure.com/subscriptions/a6498579-cfb7-41e9-a957-14375196a386/resourceGroups/$($app.RG)/providers/Microsoft.Web/sites/$($app.Name)/config/web?api-version=2022-03-01"
     $obj = az rest --method get --url $url -o json | ConvertFrom-Json
     [PSCustomObject]@{
-        Environment   = "DEV"
-        FunctionApp   = $app.Name
-        ResourceGroup = $app.RG
-        SCMType       = $obj.properties.scmType
+        Environment    = "DEV"
+        FunctionApp    = $app.Name
+        ResourceGroup  = $app.RG
+        SCMType        = $obj.properties.scmType
         LinuxFxVersion = $obj.properties.linuxFxVersion
-        AlwaysOn      = $obj.properties.alwaysOn
-        FTPS          = $obj.properties.ftpsState
-        PublicNetwork = $obj.properties.publicNetworkAccess
-        MinTLS        = $obj.properties.minTlsVersion
+        AlwaysOn       = $obj.properties.alwaysOn
+        FTPS           = $obj.properties.ftpsState
+        PublicNetwork  = $obj.properties.publicNetworkAccess
+        MinTLS         = $obj.properties.minTlsVersion
     }
 }
 $scmInventory |
@@ -1388,35 +1032,5 @@ az rest --method get --url $url -o json
 
 ---
 
-## 21. Appendix B: Glossary
-
-| Term | Definition |
-|---|---|
-| Function App | An Azure resource that hosts one or more Functions. Similar to a microservice deployment unit. |
-| Function | A single unit of code that responds to an event (trigger). Lives inside a Function App. |
-| Trigger | The event that causes a Function to execute. Each Function has exactly one trigger. |
-| Binding | A declarative connection between a Function and an external resource (Event Hub, Blob, etc.). |
-| Durable Functions | An Azure Functions extension for writing stateful, long-running workflows using orchestrator/activity patterns. |
-| Event Hub | An Azure streaming platform for high-throughput event ingestion. |
-| Service Bus | An Azure messaging service supporting topics and subscriptions for pub/sub patterns. |
-| Blob Storage | Azure's object storage for unstructured data (files, documents). |
-| ARM API | Azure Resource Manager API -- the management plane used to query resource configuration. |
-| Application Insights | Azure's application performance monitoring (APM) service. |
-| Diagnostic Settings | Azure Monitor configuration that routes platform logs to Log Analytics, Event Hub, or Storage. |
-| SCM | Source Control Manager -- how deployment code reaches the Function App. |
-| ZipDeploy | A deployment method where a zip archive of the app is pushed to Azure. |
-| VSTSRM | Visual Studio Team Services Release Management (Azure DevOps Releases). |
-
----
-
-## 22. Closing SRE Statement
-
-> "The DEV Azure Functions estate is now partially mapped at resource, workload, trigger, dependency, platform, deployment, CI/CD, and observability-configuration levels. We have evidence for 10 Function Apps and 30 registered Functions in the current DEV scope. The next phase is to complete the operational view by mapping identity, RBAC, networking, actual telemetry destinations, alerting, runtime health, ownership and SLOs. Once DEV is coherent, the same model can be applied to QA and PROD for comparison and promotion-path analysis."
-
-> "The DEV Function estate is not one homogeneous workload. It contains HTTP APIs, webhooks, Event Hub consumers, Blob-triggered processors, a scheduled ingestion function, Service Bus consumers, and a Durable Functions orchestration system. We have mapped these workloads down to the individual Function level and preserved the evidence in CSV inventories. The next step is to connect this workload map to identity, permissions, network paths, observability and operational ownership so that we can produce a complete SRE view rather than only an Azure resource inventory."
-
-**No remediation or implementation changes have been performed during this discovery phase.**
-
----
-
-*Document authored by SRE Team | Evidence collected August 2026 | DEV Environment Only*
+*Document authored by SRE Team | Evidence collected August 2026 | DEV Environment Only*  
+*No remediation or implementation changes have been performed during this discovery phase.*
