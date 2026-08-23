@@ -130,7 +130,7 @@ We were told Azure Functions was unknown. We went in, mapped everything in DEV, 
 
 ## 13. Capability Matrix — Where We Stand Now
 
-**"Azure Functions went from unknown to partially mapped across deploy, promotion, and observability — but alerting, scheduled verification, identity, and networking are still untouched."**
+**"Azure Functions went from unknown to partially mapped across deploy, promotion, and observability — but alerting, scheduled verification, identity, and networking are in progress"**
 
 - Deploy on merge: partially mapped
 - Promotion gates: partially mapped
