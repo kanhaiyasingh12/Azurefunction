@@ -6,8 +6,7 @@
 
 ## The Story in 30 Seconds
 
-We were told Azure Functions was unknown. We went in, mapped everything in DEV, found 10 apps running 30 functions, documented every trigger, every dependency, every gap — and touched nothing. Here's what we found.
-
+We were told Azure Functions was unknown. We went in, mapped everything in DEV, found 10 apps running 30 functions, documented every trigger, every dependency, every gap 
 ---
 
 ## 1. Why We Did This
