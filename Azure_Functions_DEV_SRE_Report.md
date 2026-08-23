@@ -8,6 +8,62 @@
 
 ---
 
+## Table of Contents
+
+- [1. Background and Context](#1-background-and-context)
+  - [1.1 Why This Investigation Exists](#11-why-this-investigation-exists)
+  - [1.2 Investigation Principle](#12-investigation-principle)
+- [2. DEV Environment Scope](#2-dev-environment-scope)
+- [3. Investigation Method](#3-investigation-method)
+- [4. Function App Inventory](#4-function-app-inventory)
+  - [4.1 Complete List of DEV Function Apps](#41-complete-list-of-dev-function-apps)
+  - [4.2 How the Inventory Was Discovered](#42-how-the-inventory-was-discovered)
+  - [4.3 Function App to Function Count](#43-function-app-to-function-count)
+- [5. Complete 30-Function Inventory](#5-complete-30-function-inventory)
+  - [5.1 Functions Grouped by Runtime](#51-functions-grouped-by-runtime)
+- [6. Trigger and Binding Inventory](#6-trigger-and-binding-inventory)
+  - [6.1 Trigger Type Summary](#61-trigger-type-summary)
+  - [6.2 Complete Binding Inventory](#62-complete-binding-inventory)
+  - [6.3 Functions With Multiple Bindings](#63-functions-with-multiple-bindings)
+- [7. External Dependencies and Data Flows](#7-external-dependencies-and-data-flows)
+  - [7.1 Event Dependencies Inventory](#71-event-dependencies-inventory)
+  - [7.2 Event Hub Data Flows](#72-event-hub-data-flows)
+  - [7.3 Service Bus Data Flow](#73-service-bus-data-flow)
+  - [7.4 Blob Storage Data Flows](#74-blob-storage-data-flows)
+  - [7.5 Timer (Scheduled) Flow](#75-timer-scheduled-flow)
+- [8. Durable Functions Architecture -- SOP Factory](#8-durable-functions-architecture----sop-factory)
+  - [8.1 Role Classification](#81-role-classification)
+  - [8.2 Execution Flow](#82-execution-flow)
+- [9. Application-by-Application Architecture](#9-application-by-application-architecture)
+  - [9.1 uudri-bill-processor-dev](#91-uudri-bill-processor-dev)
+  - [9.2 helios-ontology-event-processor-func](#92-helios-ontology-event-processor-func)
+  - [9.3 helios-github-activity-logger-dev-func](#93-helios-github-activity-logger-dev-func)
+  - [9.4 func-projector-sopfactorydevmlel9](#94-func-projector-sopfactorydevmlel9)
+  - [9.5 helios-dev-cost-ingestion](#95-helios-dev-cost-ingestion)
+  - [9.6 func-orchestrator-sopfactorydevmlel9](#96-func-orchestrator-sopfactorydevmlel9)
+  - [9.7 helios-device-telemetry-dev-func](#97-helios-device-telemetry-dev-func)
+  - [9.8 ems-plan-narration-function](#98-ems-plan-narration-function)
+  - [9.9 kg-event-processor-dev](#99-kg-event-processor-dev)
+  - [9.10 UUDRI-Bill-Processor-dev-01](#910-uudri-bill-processor-dev-01)
+- [10. SCM and Platform Configuration](#10-scm-and-platform-configuration)
+- [11. Observability Configuration](#11-observability-configuration)
+  - [11.1 Application Insights Configuration](#111-application-insights-configuration)
+  - [11.2 Azure Monitor Diagnostic Settings](#112-azure-monitor-diagnostic-settings)
+- [12. CI/CD and Release Orchestration](#12-cicd-and-release-orchestration)
+  - [12.1 Repository Investigated](#121-repository-investigated)
+  - [12.2 GitHub Actions Workflows Found](#122-github-actions-workflows-found)
+  - [12.3 DEV Release Flow](#123-dev-release-flow)
+  - [12.4 GitHub Repository Secrets](#124-github-repository-secrets-names-only)
+  - [12.5 GitHub Repository Variables](#125-github-repository-variables)
+  - [12.6 SRE Observations on Release Pipeline](#126-sre-observations-on-release-pipeline)
+  - [12.7 Deployment History Evidence](#127-deployment-history-evidence)
+- [13. Logic App / Workflow App Discovery](#13-logic-app--workflow-app-discovery)
+- [14. Current DEV Architecture Diagram](#14-current-dev-architecture-diagram)
+- [15. Capability Matrix Update](#15-capability-matrix-update)
+  - [15.1 Detailed SRE Capability Position](#151-detailed-sre-capability-position)
+
+---
+
 ## 1. Background and Context
 
 ### 1.1 Why This Investigation Exists
