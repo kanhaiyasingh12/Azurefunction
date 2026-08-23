@@ -838,6 +838,3 @@ Based on DEV findings, the Azure Functions row can now be updated:
 | SLO/SLI | Not yet mapped |
 
 ---
-
-*Document authored by SRE Team | Evidence collected August 2026 | DEV Environment Only*  
-*No remediation or implementation changes have been performed during this discovery phase.*
