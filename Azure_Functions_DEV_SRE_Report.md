@@ -4,7 +4,6 @@
 **Environment:** DEV  
 **Scope:** Azure Functions (~87 across 3 environments; 10 Function Apps / 30 Functions in DEV)  
 **Status:** Discovery complete -- no remediation or implementation changes have been performed  
-**Date:** August 2026  
 
 ---
 
