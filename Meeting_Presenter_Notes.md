@@ -6,7 +6,7 @@
 
 ## The Story in 30 Seconds
 
-Azure Functions was unknown. We went in, mapped everything in DEV, found 10 apps running 30 functions, documented every trigger, every dependency, every gap 
+Azure Functions was unknown. I, mapped everything in DEV, found 10 apps running 30 functions, documented every trigger, every dependency, every gap 
 ---
 
 ## 1. Why We Did This
