@@ -72,18 +72,19 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 
 ---
 
-## 6. Capability Matrix — Final DEV Position
+## 6. Capability Matrix Update
 
-| Capability | Previous | Current DEV |
-|---|---|---|
-| Deploy on merge | `unknown` | **Mapped** |
-| Promotion gates (dev > QA > prod) | `unknown` | **Mapped** |
-| Scheduled verification | `not started` | **Mapped** |
-| Alerting | `not started` | **Mapped** — 23 metric + 51 log alerts, 5 Action Groups, 2 apps uncovered |
-| Observability + cost | `not started` | **Mapped** — 9/10 App Insights, 0/10 diagnostic settings, 1 app blind |
-| Reporting / audit | `not started` | **Baseline established** |
-| Identity / RBAC | `not started` | **Mapped** — 153 assignments, all Managed Identity, RBAC-enabled Key Vaults |
-| Networking | `not started` | **Mapped** — 0/10 VNet, 0/10 private endpoints, all public |
+Based on DEV findings, the Azure Functions row can now be updated:
+
+| Capability | Previous | Current DEV Status | Evidence |
+|:---|:---|:---|:---|
+| Deploy on merge | unknown | **Mapped (DEV)** | Deployment methods (GitHubAction, VSTSRM, CLI/ZipDeploy) documented for all 10 apps in `DEV-CICD-Discovery-All10.csv`. |
+| Promotion gates (dev > QA > prod) | unknown | **Mapped (DEV)** | Deployment slots verified for all apps (1 app has slots). Workflow files in `helios-plan-narration-backend` examined. |
+| Scheduled verification | not started | **Mapped (DEV)** | Confirmed 0 out of 10 apps have health checks or URL ping tests active. Gaps saved in `DEV-Scheduled-Verification.csv`. |
+| Alerting | not started | **Mapped (DEV)** | 8/10 apps are covered by 23 metric and 245 log alerts routing to `dev-teams` action group. Matrix saved in `DEV-Alert-Coverage-Matrix.csv`. |
+| Observability + cost | not started | **Mapped (DEV)** | 9/10 apps have App Insights (cost-ingestion missing). 0/10 have diagnostic settings. Saved in `DEV-Observability-Complete.csv`. |
+| Reporting / audit | not started | **Mapped (DEV)** | Confirmed 0/10 diagnostic settings. Diagnostic/Log Analytics workspaces mapped in `DEV-LogAnalytics-Workspaces.csv` & `DEV-Diagnostic-Settings.csv`. |
+
 
 ---
 
@@ -109,19 +110,21 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 | When will QA/PROD be done? | Same methodology, same ARM queries. Timeline depends on access and scope. |
 
 ---
+### 9 Detailed SRE Capability Position
 
-## The Numbers to Remember
-
-```
-10 apps, 30 functions, 3 Logic Apps
-16 functions in one app (SOP Factory) — single point of failure
-153 RBAC assignments — all Managed Identity
-4 Key Vaults — all Azure RBAC (no legacy Access Policies)
-23 metric alerts, 51 log alerts, 5 Action Groups
-8/10 apps have alerting — 2 UUDRI apps don't
-9/10 have App Insights — cost ingestion has nothing
-0/10 have diagnostic settings
-0/10 have VNet integration or private endpoints
-0/10 have IP restrictions — all public
-DEV is fully mapped — next: QA and PROD
-```
+| Area | Status | Evidence File |
+|:---|:---|:---|
+| Resource inventory | Mapped | `DEV-Function-Inventory.csv` |
+| Function inventory | Mapped | `DEV-Function-Inventory.csv` |
+| Trigger/bindings | Mapped | `DEV-Binding-Inventory.csv` |
+| Event dependencies | Mapped | `DEV-Event-Dependencies-Resolved.csv` |
+| Durable architecture | Mapped | `SRE_DEV_Discovery_Architecture_30_Functions.md` |
+| Platform configuration | Mapped | `DEV-Platform-Configuration-Complete.csv` |
+| CI/CD | Mapped | `DEV-CICD-Discovery-All10.csv` |
+| Observability config | Mapped | `DEV-Observability-Complete.csv` |
+| Alerting | Mapped | `DEV-Alert-Coverage-Matrix.csv` |
+| Scheduled verification | Mapped (Confirmed Gap) | `DEV-Scheduled-Verification.csv` |
+| Reporting/audit | Mapped (Confirmed Gap) | `DEV-Diagnostic-Settings.csv` |
+| Identity/RBAC | Mapped | `DEV-Managed-Identity.csv` & `DEV-RBAC-Assignments.csv` |
+| Networking | Mapped | `DEV-Networking.csv` |
+| SLO/SLI | Mapped (Baseline Metrics) | `DEV-SLI-Metrics-Baseline.csv` & `DEV-SLO-Status.csv` |
