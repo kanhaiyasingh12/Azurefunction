@@ -1,6 +1,6 @@
 # Meeting Notes — Azure Functions SRE Discovery: DEV Complete
 
-**Date:** 2026-08-25    
+**Date:** 2026-08-25  
 **Status:** DEV discovery finalized and published to Azure DevOps Wiki
 
 ---
@@ -13,7 +13,7 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 
 ## Opening
 
-> "Hi everyone, I have a status update on the Azure Functions SRE Discovery. I finalized the comprehensive DEV discovery report and published it to our Azure DevOps Wiki. With this report complete, we've successfully moved Azure Functions in DEV from 'unknown' to 'fully mapped' in our Release Orchestration Capability Matrix."
+> Hi everyone, I have a status update on the Azure Functions SRE Discovery. I finalized the comprehensive DEV discovery report and published it to our Azure DevOps Wiki. With this report complete, we've successfully moved Azure Functions in DEV from 'unknown' to 'fully mapped' in our Release Orchestration Capability Matrix.
 
 ---
 
@@ -99,16 +99,16 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 
 ## 8. Capability Matrix — Final DEV Position
 
-| Capability | Status |
-|---|---|
-| Deploy on merge | Partially mapped |
-| Promotion gates (dev > QA > prod) | Partially mapped |
-| Scheduled verification | Not started |
-| Alerting | **Mapped** — 23 metric + 51 log alerts, 5 Action Groups, 2 apps uncovered |
-| Observability + cost | **Mapped** — 9/10 App Insights, 0/10 diagnostic settings, 1 app blind |
-| Reporting / audit | Baseline established |
-| Identity / RBAC | **Mapped** — 153 assignments, all Managed Identity, RBAC-enabled Key Vaults |
-| Networking | **Mapped** — 0/10 VNet, 0/10 private endpoints, all public |
+| Capability | Previous | Current DEV |
+|---|---|---|
+| Deploy on merge | `unknown` | **Partially mapped** |
+| Promotion gates (dev > QA > prod) | `unknown` | **Partially mapped** |
+| Scheduled verification | `not started` | **Not started** |
+| Alerting | `not started` | **Mapped** — 23 metric + 51 log alerts, 5 Action Groups, 2 apps uncovered |
+| Observability + cost | `not started` | **Mapped** — 9/10 App Insights, 0/10 diagnostic settings, 1 app blind |
+| Reporting / audit | `not started` | **Baseline established** |
+| Identity / RBAC | `not started` | **Mapped** — 153 assignments, all Managed Identity, RBAC-enabled Key Vaults |
+| Networking | `not started` | **Mapped** — 0/10 VNet, 0/10 private endpoints, all public |
 
 ---
 
@@ -140,11 +140,11 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 ```
 10 apps, 30 functions, 3 Logic Apps
 16 functions in one app (SOP Factory) — single point of failure
-153 RBAC assignments, all Managed Identity
-4 Key Vaults, all Azure RBAC (no legacy Access Policies)
+153 RBAC assignments — all Managed Identity
+4 Key Vaults — all Azure RBAC (no legacy Access Policies)
 23 metric alerts, 51 log alerts, 5 Action Groups
-8/10 apps have alerting, 2 UUDRI apps don't
-9/10 have App Insights, cost ingestion has nothing
+8/10 apps have alerting — 2 UUDRI apps don't
+9/10 have App Insights — cost ingestion has nothing
 0/10 have diagnostic settings
 0/10 have VNet integration or private endpoints
 0/10 have IP restrictions — all public
