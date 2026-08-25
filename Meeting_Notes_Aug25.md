@@ -16,19 +16,7 @@
 DEV environment Azure Functions discovery is **complete**. The report is live on our ADO Wiki. Azure Functions has moved from `unknown` to `fully mapped` in the capability matrix for DEV. We mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
 
 ---
-
-## 1. Network Security
-
-**"Zero VNet integration, zero private endpoints, zero IP restrictions — all 10 apps are fully exposed to the public internet."**
-
-- 0/10 apps have outbound VNet integration
-- 0/10 apps have inbound private endpoints
-- All inbound IP restrictions for both SCM and runtime endpoints are disabled (defaulting to `Allow All`)
-- All 10 apps are publicly accessible with no network boundary
-
----
-
-## 2. Observability Gaps
+## 1. Observability Gaps
 
 **"9 out of 10 have App Insights, but the cost ingestion app has zero telemetry — and none of the 10 apps have diagnostic settings."**
 
@@ -37,8 +25,7 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 - 0/10 apps have resource-level diagnostic settings — platform logs, host startup errors, and scaling logs are not being forwarded to Log Analytics
 
 ---
-
-## 3. Identity & Security
+## 2. Identity & Security
 
 **"All 10 apps use System-Assigned Managed Identity, I mapped 153 RBAC assignments, and all 4 Key Vaults in scope use Azure RBAC — no legacy Access Policies."**
 
@@ -50,6 +37,17 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
   - (+ 2 others)
 - All 4 Key Vaults configured with **Azure RBAC authorization enabled** — secrets access is governed via RBAC permissions (e.g., `Key Vault Secrets User`) rather than legacy Access Policies
 
+  ---
+## 3. Network Security
+
+**"Zero VNet integration, zero private endpoints, zero IP restrictions — all 10 apps are fully exposed to the public internet."**
+
+- 0/10 apps have outbound VNet integration
+- 0/10 apps have inbound private endpoints
+- All inbound IP restrictions for both SCM and runtime endpoints are disabled (defaulting to `Allow All`)
+- All 10 apps are publicly accessible with no network boundary
+
+---
 ---
 
 ## 4. Alerting Coverage
