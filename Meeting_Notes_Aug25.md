@@ -1,13 +1,7 @@
 # Meeting Notes — Azure Functions SRE Discovery: DEV Complete
 
-**Date:** 2026-08-25   
+**Date:** 2026-08-25  
 **Status:** DEV discovery finalized and published to Azure DevOps Wiki
-
----
-
-## Quick Summary
-
-DEV environment Azure Functions discovery is **complete**. The report is added on our ADO Wiki. Azure Functions has moved from `unknown` to `fully mapped` in the capability matrix for DEV. We mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
 
 ---
 
@@ -17,30 +11,13 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 1. Scope & Runtimes
+## Quick Summary
 
-**"10 Function Apps running 30 functions across Python, Node.js, and .NET isolated — plus 3 Logic Apps monitoring event streams."**
-
-- Python 3.11/3.12 — 5 apps, 9 functions
-- Node.js 20 — 2 apps, 17 functions
-- .NET isolated — 3 apps, 4 functions
-- 3 Logic Apps (workflow apps) in the same resource group monitoring weather, market, and data event streams
+DEV environment Azure Functions discovery is **complete**. The report is live on our ADO Wiki. Azure Functions has moved from `unknown` to `fully mapped` in the capability matrix for DEV. We mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
 
 ---
 
-## 2. SOP Factory — The Critical Component
-
-**"One app contains 16 of the 30 functions — it's a complete Durable Functions document processing pipeline and a major single point of failure."**
-
-- `func-orchestrator-sopfactorydevmlel9` — Node.js 20, 16 functions
-- Documents enter via HTTP POST (`intakeDocument`) or Blob Storage (`onSourceDocument`)
-- Orchestrator chains: classify → ingest → screen → generate 4 artifact types (FDD, ontology, policy, SOP) → open GitHub PR
-- Query endpoints for pipeline status (`pipelineRuns`, `pipelineRunDetail`, `pipelineSmeQueue`)
-- **Single point of failure** — if this app goes down, the entire SOP Factory workflow stops
-
----
-
-## 3. Network Security
+## 1. Network Security
 
 **"Zero VNet integration, zero private endpoints, zero IP restrictions — all 10 apps are fully exposed to the public internet."**
 
@@ -51,7 +28,7 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 4. Observability Gaps
+## 2. Observability Gaps
 
 **"9 out of 10 have App Insights, but the cost ingestion app has zero telemetry — and none of the 10 apps have diagnostic settings."**
 
@@ -61,7 +38,7 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 5. Identity & Security
+## 3. Identity & Security
 
 **"All 10 apps use System-Assigned Managed Identity, I mapped 153 RBAC assignments, and all 4 Key Vaults in scope use Azure RBAC — no legacy Access Policies."**
 
@@ -75,7 +52,7 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 6. Alerting Coverage
+## 4. Alerting Coverage
 
 **"23 metric alerts and 51 log alerts routing through 5 Action Groups — 8 out of 10 apps are covered, but the two UUDRI bill processors have no metric alerts."**
 
@@ -87,7 +64,7 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 7. CI/CD (Previously Reported)
+## 5. CI/CD (Previously Reported)
 
 **"GitHub Actions for plan narration, Azure DevOps for UUDRI, az CLI for others — no single deployment standard, no test gates, no rollback."**
 
@@ -97,7 +74,7 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 8. Capability Matrix — Final DEV Position
+## 6. Capability Matrix — Final DEV Position
 
 | Capability | Previous | Current DEV |
 |---|---|---|
@@ -112,7 +89,7 @@ DEV environment Azure Functions discovery is **complete**. The report is added o
 
 ---
 
-## 9. Next Steps
+## 7. Next Steps
 
 **"DEV is done. Now we replicate the same ARM-based discovery process for QA and PROD."**
 
