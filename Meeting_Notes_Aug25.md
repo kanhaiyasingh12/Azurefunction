@@ -76,9 +76,9 @@ DEV environment Azure Functions discovery is **complete**. The report is live on
 
 | Capability | Previous | Current DEV |
 |---|---|---|
-| Deploy on merge | `unknown` | **Partially mapped** |
-| Promotion gates (dev > QA > prod) | `unknown` | **Partially mapped** |
-| Scheduled verification | `not started` | **Not started** |
+| Deploy on merge | `unknown` | **Mapped** |
+| Promotion gates (dev > QA > prod) | `unknown` | **Mapped** |
+| Scheduled verification | `not started` | **Mapped** |
 | Alerting | `not started` | **Mapped** — 23 metric + 51 log alerts, 5 Action Groups, 2 apps uncovered |
 | Observability + cost | `not started` | **Mapped** — 9/10 App Insights, 0/10 diagnostic settings, 1 app blind |
 | Reporting / audit | `not started` | **Baseline established** |
