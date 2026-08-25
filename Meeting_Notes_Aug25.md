@@ -7,13 +7,13 @@
 
 ## Opening
 
-> Hi everyone, I have a status update on the Azure Functions SRE Discovery. I finalized the comprehensive DEV discovery report and added it to our Azure DevOps Wiki. With this report complete, we've successfully moved Azure Functions in DEV from 'unknown' to 'fully mapped' in our Release Orchestration Capability Matrix.
+> Hi everyone, I have a status update on the Azure Functions SRE Discovery. I finalized the comprehensive DEV discovery report and added it to our Azure DevOps Wiki. , I've successfully moved Azure Functions in DEV from 'unknown' to 'fully mapped' in our Release Orchestration Capability Matrix.
 
 ---
 
 ## Quick Summary
 
-DEV environment Azure Functions discovery is **complete**. The report is live on our ADO Wiki. Azure Functions has moved from `unknown` to `fully mapped` in the capability matrix for DEV. We mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
+I mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
 
 ---
 ## 1. Observability Gaps
