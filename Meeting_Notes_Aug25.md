@@ -7,7 +7,7 @@
 
 ## Opening
 
-> Hi everyone, I have a status update on the Azure Functions SRE Discovery. I finalized the comprehensive DEV discovery report and published it to our Azure DevOps Wiki. With this report complete, we've successfully moved Azure Functions in DEV from 'unknown' to 'fully mapped' in our Release Orchestration Capability Matrix.
+> Hi everyone, I have a status update on the Azure Functions SRE Discovery. I finalized the comprehensive DEV discovery report and added it to our Azure DevOps Wiki. With this report complete, we've successfully moved Azure Functions in DEV from 'unknown' to 'fully mapped' in our Release Orchestration Capability Matrix.
 
 ---
 
