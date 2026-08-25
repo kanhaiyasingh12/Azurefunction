@@ -1,14 +1,13 @@
 # Meeting Notes — Azure Functions SRE Discovery: DEV Complete
 
-**Date:** 2026-08-25  
-**Presenter:** SRE Team  
+**Date:** 2026-08-25   
 **Status:** DEV discovery finalized and published to Azure DevOps Wiki
 
 ---
 
 ## Quick Summary
 
-DEV environment Azure Functions discovery is **complete**. The report is live on our ADO Wiki. Azure Functions has moved from `unknown` to `fully mapped` in the capability matrix for DEV. We mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
+DEV environment Azure Functions discovery is **complete**. The report is added on our ADO Wiki. Azure Functions has moved from `unknown` to `fully mapped` in the capability matrix for DEV. We mapped 10 apps, 30 functions, 3 Logic Apps, 153 RBAC assignments, 23 metric alerts, 51 log alerts, and verified network exposure across the board. Next step: replicate to QA and PROD.
 
 ---
 
