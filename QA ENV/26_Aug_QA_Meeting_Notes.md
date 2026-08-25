@@ -1,20 +1,19 @@
 # Meeting Notes — Azure Functions SRE Discovery: QA Complete
 
-**Date:** 2026-08-26  
-**Presenter:** SRE Team  
+**Date:** 2026-08-26   
 **Status:** QA discovery finalized and published to Azure DevOps Wiki
 
 ---
 
 ## Opening
 
-> Hi everyone, I have a status update on the Azure Functions QA Discovery. Following our DEV mapping, we automated the scan for the QA environment and published the final QA report to our ADO Wiki. This moves our Azure Functions QA posture from 'unknown' to 'fully mapped' in the capability matrix, revealing a few key configuration differences from DEV.
+> Hi everyone, I have a status update on the Azure Functions QA Discovery. Following our DEV mapping, I automated the scan for the QA environment and added the QA report to ADO Wiki. This moves our Azure Functions QA posture from 'unknown' to 'fully mapped' in the capability matrix, revealing a few key configuration differences from DEV.
 
 ---
 
 ## Quick Summary
 
-QA environment Azure Functions discovery is **complete**. The report is live on our ADO Wiki. We successfully mapped 10 Function Apps (2 of which are currently idle), 28 functions, and 4 Logic Apps. We mapped out cold starts, network integration, a mixed Key Vault security posture, and a manual CI/CD flow. Next step: conclude the mapping with the PROD environment.
+QA environment Azure Functions discovery is **complete**. I successfully mapped 10 Function Apps (2 of which are currently idle), 28 functions, and 4 Logic Apps. I mapped out cold starts, network integration, a mixed Key Vault security posture, and a manual CI/CD flow. Next step: conclude the mapping with the PROD environment.
 
 ---
 
@@ -39,17 +38,7 @@ QA environment Azure Functions discovery is **complete**. The report is live on 
 
 ---
 
-## 3. Network Security Delta
-
-**"All 10 apps are public to the internet, but we have our first instance of VNet integration in QA."**
-
-- **Public Exposure:** Like DEV, all 10 apps are public with no inbound private endpoints or IP restrictions (defaulting to Allow All).
-- **Outbound integration:** Unlike DEV (which had 0%), **1 out of 10 apps** has outbound VNet integration:
-  - `ems-plan-narration-function-qa` is integrated into the `appservice-subnet` on `helios-aks-qa-vnet`.
-
----
-
-## 4. Observability Gaps
+## 3. Observability Gaps
 
 **"8 out of 10 apps run App Insights, but we still have a total lack of platform diagnostic logs."**
 
@@ -58,14 +47,22 @@ QA environment Azure Functions discovery is **complete**. The report is live on 
 
 ---
 
-## 5. Identity & Key Vault Security
+## 4. Identity & Key Vault Security
 
 **"8 out of 10 apps use System-Assigned Managed Identity, but Key Vault security is a mixed posture compared to DEV."**
 
 - **Identity Gaps:** The two UUDRI apps have Managed Identity **disabled** (None).
-- **RBAC:** We mapped a total of 9 direct RBAC role assignments across all QA Function App scopes.
+- **RBAC:** I mapped a total of 9 direct RBAC role assignments across all QA Function App scopes.
 - **Key Vault Security:** Unlike DEV (which was 100% Azure RBAC), QA has a mixed posture. While 5 out of 8 Key Vaults in the QA subscription have Azure RBAC enabled, the UUDRI QA vault (`UUDRI-Key-Vault-qa-02`) still relies on legacy Access Policies.
 
+
+## 5. Network Security Delta
+
+**"All 10 apps are public to the internet, but we have our first instance of VNet integration in QA."**
+
+- **Public Exposure:** Like DEV, all 10 apps are public with no inbound private endpoints or IP restrictions (defaulting to Allow All).
+- **Outbound integration:** Unlike DEV (which had 0%), **1 out of 10 apps** has outbound VNet integration:
+  - `ems-plan-narration-function-qa` is integrated into the `appservice-subnet` on `helios-aks-qa-vnet`.
 ---
 
 ## 6. Alerting & Scheduled Verification
@@ -73,7 +70,7 @@ QA environment Azure Functions discovery is **complete**. The report is live on 
 **"8 out of 10 apps route metric alerts to Teams, but the two UUDRI apps have no alert coverage."**
 
 - **Metric Alerts:** 8 apps route Severity 3 `Http5xx` alerts to the **`ag-helios-qa-ops`** Action Group, which forwards to Microsoft Teams.
-- **Scheduled Verification Gaps:** **0 out of 10 apps** have platform health check paths, and there are zero availability web tests set up.
+- **Scheduled Verification Gaps:** **0 out of 10 apps** have platform health check paths, and there are zero availability Ib tests set up.
 
 ---
 
