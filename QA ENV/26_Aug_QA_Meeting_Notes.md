@@ -7,8 +7,7 @@
 
 ## Opening
 
-> Hi everyone, I have a status update on the Azure Functions QA Discovery. Following our DEV mapping, I automated the scan for the QA environment and added the QA report to ADO Wiki. This moves our Azure Functions QA posture from 'unknown' to 'fully mapped' in the capability matrix, revealing a few key configuration differences from DEV. I successfully mapped 10 Function Apps (2 of which are currently idle), 28 functions, and 4 Logic Apps. I mapped out cold starts, network integration, a mixed Key Vault security posture, and a manual CI/CD flow. Next step: conclude the mapping with the PROD environment.
-
+> Hi  I have a status update on the Azure Functions QA Discovery. Following our DEV mapping, I added the QA report to ADO Wiki. This moves our Azure Functions QA posture from 'unknown' to 'partial mapped' in the capability matrix, revealing a few key configuration differences from DEV. I successfully mapped 10 Function Apps (2 of which are currently idle), 28 functions, and 4 Logic Apps.
 ---
 
 
