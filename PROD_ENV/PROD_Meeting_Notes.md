@@ -1,4 +1,4 @@
-# Meeting Presenter Notes — Azure Functions PROD Discovery (August 27, 2026)
+# Meeting Presenter Notes — Azure Functions PROD Discovery 
 
 > Read this like a story. Each section is one beat. Say the one-liner, then use the bullets if they ask for detail.
 
