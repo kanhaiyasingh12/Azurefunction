@@ -42,7 +42,7 @@
 
 **"All 7 Function apps run on System-Assigned Managed Identity, but Key Vault security is a mixed posture."**
 
-- **Managed Identities & Roles:** Mapped all 7 apps to use System-Assigned Managed Identity, with a total of 14 direct RBAC role assignments successfully verified across target production resource scopes.
+- **Managed Identities & Roles:** Mapped all 7 function apps to use System-Assigned Managed Identity, with a total of 14 direct RBAC role assignments successfully verified across target production resource scopes.
 - **Key Vault Models:** 6 out of 8 Key Vaults in the PROD subscription use Azure RBAC. However, the UI vault (`helios-prod-ui-kv`) and Sparkplug PKI vault (`helios-prd-spkplg-pki-kv`) still use legacy Access Policies.
 - **Network Security:** All 7 apps are fully public to the internet with zero IP restrictions. Only `ems-plan-narration-function-prod` has outbound VNet integration.
 
