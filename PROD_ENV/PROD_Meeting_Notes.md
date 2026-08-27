@@ -6,7 +6,7 @@
 
 ## The Story in 30 Seconds
 
-I have successfully completed the SRE discovery for the **Production Environment** (Subscription: `Helios - Production`). Production has a significantly different footprint compared to DEV and QA: it runs **only 7 Function Apps** and **25 functions** (down from 10/28 in QA and 10/30 in DEV).
+**I have successfully completed the SRE discovery for the **Production Environment** (Subscription: `Helios - Production`). Production has a significantly different footprint compared to DEV and QA: it runs **only 7 Function Apps** and **25 functions** (down from 10/28 in QA and 10/30 in DEV).**
 ---
 
 ## 1. What I Accomplished (Did)
