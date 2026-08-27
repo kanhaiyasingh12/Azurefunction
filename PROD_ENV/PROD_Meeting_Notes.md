@@ -6,8 +6,7 @@
 
 ## The Story in 30 Seconds
 
-I have successfully completed the SRE discovery for the **Production Environment** (Subscription: `Helios - Production`). Production has a significantly different footprint compared to DEV and QA: it runs **only 7 Function Apps** and **25 functions** (down from 10/28 in QA and 10/30 in DEV). I identified several architectural, function-level, and pipeline-level deltas in PROD that are to our operational baseline.
-
+I have successfully completed the SRE discovery for the **Production Environment** (Subscription: `Helios - Production`). Production has a significantly different footprint compared to DEV and QA: it runs **only 7 Function Apps** and **25 functions** (down from 10/28 in QA and 10/30 in DEV).
 ---
 
 ## 1. What I Accomplished (Did)
@@ -20,7 +19,7 @@ I have successfully completed the SRE discovery for the **Production Environment
 
 ## 2. Scope & Runtimes — Scope Gaps
 
-**"I run 7 Function apps with 25 functions in PROD — and several major components are completely absent."**
+**"I Found 7 Function apps with 25 functions in PROD — and several major components are completely absent."**
 
 - **Missing Services:** The two UUDRI utility apps and the `helios-device-telemetry` app **do not exist** in the Production subscription.
 - **Cold Starts:** Like QA, **AlwaysOn is False for all 7 apps in PROD**, so every app experiences cold starts.
@@ -41,7 +40,7 @@ I have successfully completed the SRE discovery for the **Production Environment
 
 ## 4. Security & Key Vault Posture
 
-**"All 7 apps run on System-Assigned Managed Identity, but Key Vault security is a mixed posture."**
+**"All 7 Function apps run on System-Assigned Managed Identity, but Key Vault security is a mixed posture."**
 
 - **Managed Identities & Roles:** Mapped all 7 apps to use System-Assigned Managed Identity, with a total of 14 direct RBAC role assignments successfully verified across target production resource scopes.
 - **Key Vault Models:** 6 out of 8 Key Vaults in the PROD subscription use Azure RBAC. However, the UI vault (`helios-prod-ui-kv`) and Sparkplug PKI vault (`helios-prd-spkplg-pki-kv`) still use legacy Access Policies.
